@@ -24,6 +24,17 @@ type Translations = {
   tankLowNotifBody: string;
   pumpManual: string;
   evManualOn: string;
+  // DeviceSetupModal keys
+  setupTitle: string;
+  setupSubtitle: string;
+  setupDeviceName: string;
+  setupDeviceNamePlaceholder: string;
+  setupNewPassword: string;
+  setupConfirmPassword: string;
+  setupPasswordTooShort: string;
+  setupPasswordMismatch: string;
+  setupSave: string;
+  setupSaving: string;
 };
 
 const en: Translations = {
@@ -50,6 +61,17 @@ const en: Translations = {
   tankLowNotifBody: 'Your tank level is low.',
   pumpManual: 'Manual Override',
   evManualOn: 'Pump started manually.',
+  // DeviceSetupModal
+  setupTitle: 'Set Up Device',
+  setupSubtitle: 'Give your ESP32 a name and set a secure password. The password protects BLE access.',
+  setupDeviceName: 'Device Name',
+  setupDeviceNamePlaceholder: 'e.g. WaterTank',
+  setupNewPassword: 'Password',
+  setupConfirmPassword: 'Confirm Password',
+  setupPasswordTooShort: 'Password must be at least 4 characters.',
+  setupPasswordMismatch: 'Passwords do not match.',
+  setupSave: 'Save & Continue',
+  setupSaving: 'Saving…',
 };
 
 interface LanguageContextValue {

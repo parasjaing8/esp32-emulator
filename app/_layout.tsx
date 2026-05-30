@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DeviceProvider } from '@/context/DeviceContext';
 import { ThemeProvider } from '@/context/ThemeContext';
@@ -37,12 +36,10 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <LanguageProvider>
-            <KeyboardProvider>
-              <DeviceProvider>
-                <StatusBar style="light" />
-                <Stack screenOptions={{ headerShown: false }} />
-              </DeviceProvider>
-            </KeyboardProvider>
+            <DeviceProvider>
+              <StatusBar style="light" />
+              <Stack screenOptions={{ headerShown: false }} />
+            </DeviceProvider>
           </LanguageProvider>
         </ThemeProvider>
       </SafeAreaProvider>

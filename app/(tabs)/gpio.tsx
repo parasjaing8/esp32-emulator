@@ -1,117 +1,294 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Switch,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  Modal, Animated, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useDevice } from '@/context/DeviceContext';
 import { colors } from '@/constants/theme';
-import { type PinDef } from '@/constants/gpio';
+import { type PinDef, type PinMode } from '@/constants/gpio';
+
+type Filter = 'ALL' | 'OUTPUT' | 'INPUT' | 'ADC';
+const FILTERS: Filter[] = ['ALL', 'OUTPUT', 'INPUT', 'ADC'];
 
 export default function GpioScreen() {
-  const { connected, boardInfo, pinStates, setPinMode, writePin } = useDevice();
+  const { boardInfo, pinStates, pinModes, adcValues, setPinMode, writePin, simMode } = useDevice();
+  const [filter, setFilter]           = useState<Filter>('ALL');
+  const [modePin, setModePin]         = useState<PinDef | null>(null);
+
   const pins: PinDef[] = boardInfo?.pins ?? [];
 
-  if (!connected) {
-    return (
-      <SafeAreaView style={styles.root} edges={['top']}>
-        <View style={styles.notConnected}>
-          <Feather name="sliders" size={40} color={colors.mutedForeground} />
-          <Text style={styles.notConnectedText}>Connect a board to control GPIO</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const filtered = pins.filter((p) => {
+    const m = pinModes[p.gpio] ?? p.defaultMode;
+    if (filter === 'OUTPUT') return m === 'OUTPUT' || m === 'PWM';
+    if (filter === 'INPUT')  return m === 'INPUT' || m === 'INPUT_PULLUP' || m === 'INPUT_PULLDOWN';
+    if (filter === 'ADC')    return m === 'ADC' || p.adcChannel !== undefined;
+    return true;
+  });
+
+  const isConnected = !!boardInfo;
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>GPIO Control</Text>
-        <Text style={styles.headerSub}>{pins.length} pins  ·  {boardInfo?.chip}</Text>
+    <SafeAreaView style={S.root} edges={['top']}>
+      {/* Header */}
+      <View style={S.header}>
+        <View>
+          <Text style={S.title}>GPIO</Text>
+          <Text style={S.subtitle}>
+            {isConnected ? `${pins.length} pins · ${boardInfo?.chip}` : 'No board'}
+          </Text>
+        </View>
+        {simMode && isConnected && (
+          <View style={S.liveBadge}>
+            <View style={S.liveDot} />
+            <Text style={S.liveText}>LIVE SIM</Text>
+          </View>
+        )}
       </View>
 
-      <FlatList
-        data={pins}
-        keyExtractor={(p) => String(p.gpio)}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.grid}
-        renderItem={({ item }) => (
-          <PinCard
-            pin={item}
-            state={pinStates[item.gpio]}
-            onToggle={() => writePin(item.gpio, pinStates[item.gpio] ? 0 : 1)}
-            onModeChange={(mode) => setPinMode(item.gpio, mode)}
-          />
-        )}
+      {/* Filter bar */}
+      <View style={S.filterBar}>
+        {FILTERS.map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[S.filterBtn, filter === f && S.filterBtnActive]}
+            onPress={() => setFilter(f)}
+            activeOpacity={0.7}
+          >
+            <Text style={[S.filterText, filter === f && S.filterTextActive]}>{f}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {!isConnected ? (
+        <View style={S.empty}>
+          <Feather name="sliders" size={40} color={colors.mutedForeground} />
+          <Text style={S.emptyText}>Connect a board to view GPIO</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(p) => String(p.gpio)}
+          numColumns={2}
+          columnWrapperStyle={S.row}
+          contentContainerStyle={S.grid}
+          renderItem={({ item }) => (
+            <PinCard
+              pin={item}
+              mode={pinModes[item.gpio] ?? item.defaultMode}
+              state={pinStates[item.gpio] ?? 0}
+              adcVal={adcValues[item.gpio]}
+              onToggle={() => writePin(item.gpio, (pinStates[item.gpio] ?? 0) === 1 ? 0 : 1)}
+              onLongPress={() => setModePin(item)}
+            />
+          )}
+          ListEmptyComponent={
+            <Text style={S.noMatchText}>No pins match filter "{filter}"</Text>
+          }
+        />
+      )}
+
+      {/* Mode change sheet */}
+      <ModeSheet
+        pin={modePin}
+        currentMode={modePin ? (pinModes[modePin.gpio] ?? modePin.defaultMode) : 'INPUT'}
+        onClose={() => setModePin(null)}
+        onSelect={(mode) => { if (modePin) setPinMode(modePin.gpio, mode); setModePin(null); }}
       />
     </SafeAreaView>
   );
 }
 
-function PinCard({
-  pin, state, onToggle, onModeChange,
-}: {
+// ── Pin Card ──────────────────────────────────────────────────────────────────
+
+function PinCard({ pin, mode, state, adcVal, onToggle, onLongPress }: {
   pin: PinDef;
-  state: number | undefined;
+  mode: PinMode;
+  state: number;
+  adcVal?: number;
   onToggle: () => void;
-  onModeChange: (mode: string) => void;
+  onLongPress: () => void;
 }) {
-  const isOutput  = pin.defaultMode === 'OUTPUT';
+  const flashAnim = useRef(new Animated.Value(0)).current;
+  const prevState = useRef(state);
+
+  if (prevState.current !== state) {
+    prevState.current = state;
+    Animated.sequence([
+      Animated.timing(flashAnim, { toValue: 1, duration: 80, useNativeDriver: false }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 300, useNativeDriver: false }),
+    ]).start();
+  }
+
   const isHigh    = state === 1;
   const isSystem  = !!pin.systemNote;
-  const stateColor = isHigh ? colors.pinHigh : colors.mutedForeground;
+  const isOutput  = mode === 'OUTPUT' || mode === 'PWM';
+  const isAdc     = mode === 'ADC' || (pin.adcChannel !== undefined && mode !== 'OUTPUT');
+  const adcPct    = adcVal !== undefined ? adcVal / 4095 : 0;
+
+  const flashBg = flashAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [colors.card, isHigh ? colors.success + '30' : colors.primary + '20'],
+  });
+
+  const borderColor = isSystem
+    ? colors.warning + '60'
+    : isHigh && isOutput ? colors.success + '80'
+    : colors.border;
+
+  const modeColor = isAdc ? colors.warning
+    : isOutput ? colors.primary
+    : colors.mutedForeground;
 
   return (
-    <View style={[styles.pinCard, isSystem && styles.pinCardSystem]}>
-      {/* Pin number badge */}
-      <View style={[styles.pinBadge, { backgroundColor: isHigh ? colors.pinHigh + '22' : colors.border }]}>
-        <Text style={[styles.pinNum, { color: stateColor }]}>{pin.gpio}</Text>
-      </View>
-
-      {/* Label */}
-      <Text style={styles.pinLabel} numberOfLines={1}>{pin.label}</Text>
-      {isSystem && <Text style={styles.pinSystem} numberOfLines={1}>{pin.systemNote}</Text>}
-
-      {/* State indicator */}
-      <View style={styles.pinStateRow}>
-        <View style={[styles.pinDot, { backgroundColor: isHigh ? colors.pinHigh : colors.border }]} />
-        <Text style={[styles.pinStateText, { color: stateColor }]}>
-          {state === undefined ? '—' : isHigh ? 'HIGH' : 'LOW'}
-        </Text>
-      </View>
-
-      {/* Toggle (output pins only) */}
-      {pin.modes.includes('OUTPUT') && !isSystem && (
-        <TouchableOpacity style={[styles.toggleBtn, isHigh && styles.toggleBtnOn]} onPress={onToggle} activeOpacity={0.75}>
-          <Text style={[styles.toggleText, isHigh && { color: colors.background }]}>
-            {isHigh ? 'Turn OFF' : 'Turn ON'}
+    <Pressable
+      style={S.pinWrap}
+      onPress={isOutput && !isSystem ? onToggle : undefined}
+      onLongPress={onLongPress}
+      delayLongPress={400}
+    >
+      <Animated.View style={[
+        S.pinCard,
+        { borderColor, backgroundColor: flashBg },
+        isSystem && S.pinCardSystem,
+        isHigh && isOutput && S.pinCardHigh,
+      ]}>
+        {/* GPIO number badge */}
+        <View style={[S.numBadge, { backgroundColor: isHigh ? colors.success + '22' : colors.border + '80' }]}>
+          <Text style={[S.numText, { color: isHigh ? colors.success : colors.mutedForeground }]}>
+            {pin.gpio}
           </Text>
-        </TouchableOpacity>
-      )}
-    </View>
+        </View>
+
+        {/* Label */}
+        <Text style={S.pinLabel} numberOfLines={1}>{pin.label}</Text>
+
+        {/* Mode badge */}
+        <View style={[S.modeBadge, { backgroundColor: modeColor + '18' }]}>
+          <Text style={[S.modeText, { color: modeColor }]}>{mode}</Text>
+        </View>
+
+        {/* System note */}
+        {isSystem && <Text style={S.sysNote}>{pin.systemNote}</Text>}
+
+        {/* State indicator */}
+        <View style={S.stateRow}>
+          <View style={[S.dot, { backgroundColor: isHigh ? colors.success : colors.border }]} />
+          <Text style={[S.stateText, { color: isHigh ? colors.success : colors.mutedForeground }]}>
+            {isHigh ? 'HIGH' : 'LOW'}
+          </Text>
+        </View>
+
+        {/* ADC bar */}
+        {isAdc && adcVal !== undefined && (
+          <View style={S.adcSection}>
+            <View style={S.adcBarBg}>
+              <View style={[S.adcBarFill, { width: `${adcPct * 100}%` as `${number}%` }]} />
+            </View>
+            <Text style={S.adcVal}>{adcVal}</Text>
+          </View>
+        )}
+
+        {/* Toggle hint for output */}
+        {isOutput && !isSystem && (
+          <Text style={[S.tapHint, isHigh && { color: colors.success + 'AA' }]}>
+            Tap to {isHigh ? 'turn OFF' : 'turn ON'}
+          </Text>
+        )}
+      </Animated.View>
+    </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  root:            { flex: 1, backgroundColor: colors.background },
-  header:          { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  headerTitle:     { fontSize: 18, fontWeight: '700', color: colors.foreground },
-  headerSub:       { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
-  notConnected:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  notConnectedText:{ fontSize: 15, color: colors.mutedForeground },
-  grid:            { padding: 12, gap: 10 },
-  row:             { gap: 10 },
-  pinCard:         { flex: 1, backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 12, gap: 6 },
-  pinCardSystem:   { borderColor: colors.destructive + '40', backgroundColor: colors.destructive + '08' },
-  pinBadge:        { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  pinNum:          { fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  pinLabel:        { fontSize: 11, color: colors.mutedForeground },
-  pinSystem:       { fontSize: 10, color: colors.destructive, fontStyle: 'italic' },
-  pinStateRow:     { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  pinDot:          { width: 6, height: 6, borderRadius: 3 },
-  pinStateText:    { fontSize: 11, fontWeight: '600' },
-  toggleBtn:       { marginTop: 4, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
-  toggleBtnOn:     { backgroundColor: colors.pinHigh, borderColor: colors.pinHigh },
-  toggleText:      { fontSize: 12, fontWeight: '600', color: colors.mutedForeground },
+// ── Mode Sheet ────────────────────────────────────────────────────────────────
+
+function ModeSheet({ pin, currentMode, onClose, onSelect }: {
+  pin: PinDef | null;
+  currentMode: PinMode;
+  onClose: () => void;
+  onSelect: (mode: PinMode) => void;
+}) {
+  if (!pin) return null;
+  const modes = pin.systemNote ? [] : pin.modes;
+  return (
+    <Modal visible={!!pin} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={S.overlay} onPress={onClose}>
+        <View style={S.sheet}>
+          <View style={S.sheetHandle} />
+          <Text style={S.sheetTitle}>GPIO{pin.gpio} — Set Mode</Text>
+          {pin.systemNote ? (
+            <View style={S.sysModeNote}>
+              <Feather name="alert-triangle" size={16} color={colors.warning} />
+              <Text style={S.sysModeText}>System pin: {pin.systemNote}{'\n'}Mode change not recommended.</Text>
+            </View>
+          ) : null}
+          {modes.map((m) => (
+            <TouchableOpacity
+              key={m}
+              style={[S.modeRow, currentMode === m && S.modeRowActive]}
+              onPress={() => onSelect(m)}
+              activeOpacity={0.7}
+            >
+              <Text style={[S.modeRowText, currentMode === m && { color: colors.primary }]}>{m}</Text>
+              {currentMode === m && <Feather name="check" size={16} color={colors.primary} />}
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={S.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+            <Text style={S.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const S = StyleSheet.create({
+  root:         { flex: 1, backgroundColor: colors.background },
+  header:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  title:        { fontSize: 18, fontFamily: 'Inter_700Bold', color: colors.foreground },
+  subtitle:     { fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 1 },
+  liveBadge:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.success + '18', borderWidth: 1, borderColor: colors.success + '40' },
+  liveDot:      { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
+  liveText:     { fontSize: 10, fontFamily: 'Inter_700Bold', color: colors.success, letterSpacing: 0.6 },
+  filterBar:    { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  filterBtn:    { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  filterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterText:   { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.mutedForeground },
+  filterTextActive: { color: '#fff' },
+  empty:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emptyText:    { fontSize: 15, fontFamily: 'Inter_400Regular', color: colors.mutedForeground },
+  noMatchText:  { textAlign: 'center', color: colors.mutedForeground, padding: 40, fontFamily: 'Inter_400Regular' },
+  grid:         { padding: 12, paddingBottom: 32 },
+  row:          { gap: 10, marginBottom: 10 },
+  pinWrap:      { flex: 1 },
+  pinCard:      { borderRadius: 12, borderWidth: 1, padding: 12, gap: 5 },
+  pinCardSystem:{ borderColor: colors.warning + '50', backgroundColor: colors.warning + '06' },
+  pinCardHigh:  {},
+  numBadge:     { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 2 },
+  numText:      { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  pinLabel:     { fontSize: 11, fontFamily: 'Inter_500Medium', color: colors.mutedForeground },
+  modeBadge:    { alignSelf: 'flex-start', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  modeText:     { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
+  sysNote:      { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.warning, fontStyle: 'italic' },
+  stateRow:     { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  dot:          { width: 7, height: 7, borderRadius: 4 },
+  stateText:    { fontSize: 12, fontFamily: 'Inter_700Bold' },
+  adcSection:   { gap: 3, marginTop: 2 },
+  adcBarBg:     { height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden' },
+  adcBarFill:   { height: 4, backgroundColor: colors.warning, borderRadius: 2 },
+  adcVal:       { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.warning, textAlign: 'right' },
+  tapHint:      { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 2 },
+  // Mode sheet
+  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  sheet:        { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, gap: 4 },
+  sheetHandle:  { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: 16 },
+  sheetTitle:   { fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.foreground, marginBottom: 12 },
+  sysModeNote:  { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: colors.warning + '12', borderRadius: 8, padding: 12, marginBottom: 8 },
+  sysModeText:  { fontSize: 13, fontFamily: 'Inter_400Regular', color: colors.warning, flex: 1, lineHeight: 18 },
+  modeRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: colors.border, marginBottom: 6 },
+  modeRowActive:{ borderColor: colors.primary, backgroundColor: colors.primary + '10' },
+  modeRowText:  { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: colors.foreground },
+  cancelBtn:    { marginTop: 8, paddingVertical: 14, alignItems: 'center', borderRadius: 10, backgroundColor: colors.border + '50' },
+  cancelText:   { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: colors.mutedForeground },
 });
