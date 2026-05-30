@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Modal, Animated, Pressable,
@@ -111,31 +111,26 @@ function PinCard({ pin, mode, state, adcVal, onToggle, onLongPress }: {
   onLongPress: () => void;
 }) {
   const flashAnim = useRef(new Animated.Value(0)).current;
-  const prevState = useRef(state);
 
-  if (prevState.current !== state) {
-    prevState.current = state;
+  useEffect(() => {
     Animated.sequence([
-      Animated.timing(flashAnim, { toValue: 1, duration: 80, useNativeDriver: false }),
-      Animated.timing(flashAnim, { toValue: 0, duration: 300, useNativeDriver: false }),
+      Animated.timing(flashAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
     ]).start();
-  }
+  }, [state, flashAnim]);
 
-  const isHigh    = state === 1;
-  const isSystem  = !!pin.systemNote;
-  const isOutput  = mode === 'OUTPUT' || mode === 'PWM';
-  const isAdc     = mode === 'ADC' || (pin.adcChannel !== undefined && mode !== 'OUTPUT');
-  const adcPct    = adcVal !== undefined ? adcVal / 4095 : 0;
-
-  const flashBg = flashAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [colors.card, isHigh ? colors.success + '30' : colors.primary + '20'],
-  });
+  const isHigh   = state === 1;
+  const isSystem = !!pin.systemNote;
+  const isOutput = mode === 'OUTPUT' || mode === 'PWM';
+  const isAdc    = mode === 'ADC' || (pin.adcChannel !== undefined && mode !== 'OUTPUT');
+  const adcPct   = adcVal !== undefined ? adcVal / 4095 : 0;
 
   const borderColor = isSystem
     ? colors.warning + '60'
-    : isHigh && isOutput ? colors.success + '80'
+    : isHigh && isOutput ? colors.success
     : colors.border;
+
+  const cardBg = isHigh && isOutput ? colors.success + '14' : colors.card;
 
   const modeColor = isAdc ? colors.warning
     : isOutput ? colors.primary
@@ -150,9 +145,9 @@ function PinCard({ pin, mode, state, adcVal, onToggle, onLongPress }: {
     >
       <Animated.View style={[
         S.pinCard,
-        { borderColor, backgroundColor: flashBg },
+        { borderColor, backgroundColor: cardBg },
         isSystem && S.pinCardSystem,
-        isHigh && isOutput && S.pinCardHigh,
+        { opacity: flashAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.7, 1] }) },
       ]}>
         {/* GPIO number badge */}
         <View style={[S.numBadge, { backgroundColor: isHigh ? colors.success + '22' : colors.border + '80' }]}>
@@ -184,7 +179,7 @@ function PinCard({ pin, mode, state, adcVal, onToggle, onLongPress }: {
         {isAdc && adcVal !== undefined && (
           <View style={S.adcSection}>
             <View style={S.adcBarBg}>
-              <View style={[S.adcBarFill, { width: `${adcPct * 100}%` as `${number}%` }]} />
+              <View style={[S.adcBarFill, { width: `${Math.round(adcPct * 100)}%` as `${number}%` }]} />
             </View>
             <Text style={S.adcVal}>{adcVal}</Text>
           </View>

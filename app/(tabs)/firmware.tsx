@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, Animated,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -27,22 +26,8 @@ export default function FirmwareScreen() {
   const [flashDone, setFlashDone]   = useState(false);
   const [startTime, setStartTime]   = useState(0);
   const [elapsed, setElapsed]       = useState(0);
-  const barAnim  = useRef(new Animated.Value(0)).current;
   const isConnected = !!boardInfo;
   const isFlashing  = otaProgress !== null;
-
-  // Animate progress bar
-  useEffect(() => {
-    if (otaProgress !== null) {
-      Animated.timing(barAnim, {
-        toValue: otaProgress / 100,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    } else {
-      barAnim.setValue(0);
-    }
-  }, [otaProgress, barAnim]);
 
   // Elapsed timer
   useEffect(() => {
@@ -87,8 +72,8 @@ export default function FirmwareScreen() {
     );
   }
 
-  const barWidth = barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
-  const barColor = barAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [colors.primary, colors.accent, colors.success] });
+  const barPct = `${otaProgress ?? 0}%` as `${number}%`;
+  const barColor = (otaProgress ?? 0) >= 80 ? colors.success : (otaProgress ?? 0) >= 40 ? colors.accent : colors.primary;
 
   return (
     <SafeAreaView style={S.root} edges={['top']}>
@@ -180,7 +165,7 @@ export default function FirmwareScreen() {
                     <Text style={S.progressPct}>{otaProgress}%</Text>
                   </View>
                   <View style={S.progressBg}>
-                    <Animated.View style={[S.progressFill, { width: barWidth, backgroundColor: barColor }]} />
+                    <View style={[S.progressFill, { width: barPct, backgroundColor: barColor }]} />
                   </View>
                   <Text style={S.progressEta}>ETA: {fmtEta(otaProgress ?? 0, elapsed)} · Do not disconnect</Text>
                 </View>
