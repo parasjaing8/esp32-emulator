@@ -1,0 +1,25 @@
+export type Translations = {
+  scanTitle: string;
+  scanSearching: string;
+  scanNoDevices: string;
+  scanNoDevicesHint: string;
+  scanAgain: string;
+  authEnterPassword: string;
+  authPasswordHint: string;
+  authWrongPassword: string;
+  authConnect: string;
+  authConnecting: string;
+  errorTitle: string;
+  errorMessage: string;
+  errorTryAgain: string;
+  errorDetails: string;
+  evMotorOn: string;
+  evMotorOff: string;
+  tankLevel: string;
+  stopTankFull: string;
+  stopSupplyCut: string;
+  tankLow: string;
+  tankLowNotifBody: string;
+  pumpManual: string;
+  evManualOn: string;
+};

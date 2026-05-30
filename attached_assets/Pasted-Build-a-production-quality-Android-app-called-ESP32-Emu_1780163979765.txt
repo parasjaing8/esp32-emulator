@@ -1,0 +1,168 @@
+Build a production-quality Android app called "ESP32 Emulator" using React Native (Expo SDK 54).
+
+  The repo is already scaffolded at https://github.com/parasjaing8/esp32-emulator — clone it and work from there. Do NOT start from scratch.
+  Improve, complete, and beautify everything.
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  CONCEPT                                                                                                               
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  This app connects to ESP32 microcontroller boards over Bluetooth (BLE) and acts as a universal control panel. Think: Arduino IDE + Serial
+  Monitor + Device Manager, but mobile-first and beautiful.
+
+  The ESP32 runs two firmwares in separate OTA partitions:
+  - Partition A = "OS firmware" — always present, exposes BLE control interface (GPIO, serial, OTA)
+  - Partition B = "App firmware" — user's project code (WaterTank controller, LED driver, etc.)
+
+  The analogy: ESP32 OS firmware = Windows. Project firmware = installed application.
+  The user can flash any .bin to partition B via BLE OTA, then switch boot target — just like installing software on a PC.
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHAT EXISTS IN THE REPO
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  constants/ble.ts       — Full BLE OS protocol: 14 characteristic UUIDs defined
+  constants/gpio.ts      — GPIO pin definitions for 5 chip variants (ESP32, C3, S3, C6, S2)
+  constants/theme.ts     — Dark color palette
+  context/DeviceContext.tsx — State management with TODO stubs for BLE calls
+  app/(tabs)/index.tsx   — Board info screen (basic)
+  app/(tabs)/gpio.tsx    — GPIO grid (basic)
+  app/(tabs)/terminal.tsx — Serial terminal (basic)
+  app/(tabs)/firmware.tsx — Firmware flash + partition switcher (basic)
+  services/BLEService.ts, FirmwareUpdateService.ts, AuthService.ts — copied from a working BLE app
+
+  All screens are functional stubs. The BLE calls are TODO comments. Everything compiles but needs real implementation and major UX
+  improvement.
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHAT TO BUILD                                                                                                         
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. SIMULATION / DEMO MODE                                                                                             
+  Since no real firmware exists yet, build a full simulation mode that auto-activates when no board is connected. Mock a connected ESP32-C3
+  board with:
+  - Random GPIO pin state changes every 2s (pins 0-10 fluctuate HIGH/LOW)
+  - Simulated ADC readings (0-4095 on pins 1-4, slowly changing)
+  - Serial output stream with fake log lines ("Boot complete", "Sensor read: 42", etc.)
+  - Fake OTA progress bar when a file is "flashed"
+  This lets the entire app be fully usable and testable without hardware.
+
+  2. BOARD SCREEN (Tab 1 — "Board")
+  - Clean card showing: Chip (ESP32-C3), Revision, MAC address, Flash (4MB), PSRAM, OS version
+  - Two partition cards side by side: "OS Firmware" and "App Firmware" — active one highlighted in blue with "RUNNING" badge
+  - "Scan for Boards" button when disconnected — opens a bottom sheet BLE scanner
+  - Connected state: show board name + disconnect button in header
+  - Show uptime counter (ticking up every second) when connected
+
+  3. GPIO SCREEN (Tab 2 — "GPIO")
+  This is the hero screen. Make it look like a professional embedded dev tool.
+  - Pin grid: 2 columns, each pin is a card
+  - Each card shows: GPIO number (large, colored), pin label, current state (HIGH=green dot, LOW=gray), mode badge (INPUT/OUTPUT/ADC)
+  - OUTPUT pins: tap card to toggle HIGH/LOW — card fills green when HIGH
+  - ADC pins: show a small horizontal bar showing value (0-4095) + numeric value
+  - System pins (USB D+/D-, BOOT): shown with orange warning tint, cannot be toggled
+  - Top filter bar: ALL | OUTPUT | INPUT | ADC — filter which pins show
+  - Long-press any pin → bottom sheet to change mode (INPUT / OUTPUT / INPUT_PULLUP)
+  - Animate state changes (quick flash on the card when value changes)
+  - Show total pin count in header: "15 pins · ESP32-C3"
+
+  4. TERMINAL SCREEN (Tab 3 — "Terminal")
+  - Proper hacker terminal aesthetic: dark background, green monospace text
+  - Scrollable log, newest at bottom, auto-scrolls
+  - Timestamps on each line (HH:MM:SS)
+  - RX lines: white/green text  |  TX lines: blue text with "→" prefix
+  - Input bar at bottom: text field + Send button
+  - Toolbar: Clear | Copy All | Pause auto-scroll toggle | Baud rate selector (9600 / 115200 / 921600)
+  - Quick-send buttons row above input: common commands like "help\n", "reset\n", "gpio read 4\n"
+  - Show "● LIVE" indicator when receiving data
+
+  5. FIRMWARE SCREEN (Tab 4 — "Firmware")
+  - Partition visualizer: two boxes representing flash memory. Left = Partition A (OS), Right = Partition B (App). Active one is highlighted.
+  Arrow shows boot direction.
+  - "Flash Firmware" section:
+    - Drag-and-drop style file picker for .bin files
+    - Shows filename, file size in KB
+    - Big "Flash →" button (red, destructive — requires confirm dialog)
+    - Progress: animated gradient progress bar, percentage, estimated time remaining, "Do not disconnect" warning
+    - After flash: success state with "Boot to App" CTA button
+  - "Switch Partition" section: two buttons "Boot OS" / "Boot App" — tapping reboots to selected partition
+  - History: last 3 flashed firmwares with name, size, date
+
+  6. DEVICE SCANNER (Bottom Sheet)
+  - Triggers from "Scan for Boards" on Board tab
+  - Shows scanning animation (pulsing rings)
+  - Lists found devices: device name + signal strength (RSSI as bars) + MAC
+  - Only shows devices with name starting "ESP32-OS" (but in simulation shows a fake board)
+  - Tap to connect — shows connecting spinner on the row
+  - "Rescan" button
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  BLE PROTOCOL (for when real hardware is available)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Service UUID: e32f0001-b5a3-f393-e0a9-e50e24dcca9e
+
+  CHAR_BOARD_INFO   e32f0002  READ       JSON: {chip, revision, mac, flash_mb, psram_mb, fw_version, app_partition}
+  CHAR_GPIO_CONFIG  e32f0003  WRITE      JSON: {pin, mode}  — "INPUT"|"OUTPUT"|"INPUT_PULLUP"|"INPUT_PULLDOWN"
+  CHAR_GPIO_WRITE   e32f0004  WRITE      JSON: {pin, value}  — 0 or 1
+  CHAR_GPIO_STATE   e32f0005  READ+NOTIFY JSON: {pins: {"4":1,"5":0,...}, ts}
+  CHAR_ADC_READ     e32f0006  WRITE+READ  Write: uint8 pin number. Read: uint16 ADC value
+  CHAR_SERIAL_TX    e32f0008  WRITE       Raw bytes to ESP32 UART0
+  CHAR_SERIAL_RX    e32f0009  NOTIFY      Raw bytes from ESP32 UART0
+  CHAR_OTA_CTRL     e32f000a  WRITE+NOTIFY JSON ctrl: {cmd:"START",size,sha256} → notify {status:"READY"|"PROGRESS"|"DONE"|"ERROR",pct}
+  CHAR_OTA_DATA     e32f000b  WRITE       Raw binary chunks (512B)
+  CHAR_PARTITION    e32f0011  WRITE+READ  {cmd:"BOOT_OS"|"BOOT_APP"|"STATUS"} → {active:"os"|"app"}
+
+  Wire these up in DeviceContext.tsx. When a real device is connected (not simulation), all calls go to actual BLE. When in simulation mode,
+  calls update local state.
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  DESIGN REQUIREMENTS                                                                                                   
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Theme: dark only. Use colors from constants/theme.ts:
+    background: #0f172a   card: #1e293b   border: #334155
+    text: #f1f5f9         muted: #94a3b8  primary: #3b82f6
+    success: #22c55e      danger: #ef4444  warning: #f59e0b
+
+  Typography: Inter font throughout (already in package.json dependencies)
+
+  Feel: professional embedded dev tool, not a toy. Dense information, not consumer-app minimal.
+  Think: VS Code dark theme + Grafana dashboard + Arduino IDE, but mobile-native.
+
+  Animations:
+  - Scanning: pulsing rings animation
+  - OTA progress: smooth gradient progress bar
+  - Tab transitions: subtle
+  
+  Bottom safe area: respect it on all screens.
+  No light mode. No onboarding screens. App opens directly to Board tab.
+  
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  TECH CONSTRAINTS
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  - Expo SDK ~54, React Native 0.81.5, React 19
+  - expo-router for navigation (already configured)                                                                     
+  - react-native-ble-plx for BLE (already in package.json)
+  - expo-document-picker for .bin file selection
+  - TypeScript strict mode — no `any` types
+  - No EAS build. Build command: cd android && ./gradlew assembleRelease
+  - Keep all files under 400 lines. Split if larger.
+  - DeviceContext.tsx is the single source of truth for all device state. No BleManager instances outside it.
+  
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  DELIVERABLE
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  A fully working Android app where:
+  1. Simulation mode is ON by default — all 4 tabs are fully functional with fake data                                  
+  2. GPIO tab shows a live updating pin grid with realistic values changing
+  3. Terminal shows a scrolling fake serial log
+  4. Firmware tab shows a realistic flash flow with progress bar
+  5. Board tab shows a fake ESP32-C3 with uptime counter
+  6. Tapping "Scan for Boards" shows a fake ESP32-OS device that can be "connected"
+  7. All BLE calls are stubbed to use simulation data but the code is wired so that swapping in real BLE (in DeviceContext.tsx) makes
+  everything real
+  8. The app looks production-grade — something you would ship on the Play Store
+
