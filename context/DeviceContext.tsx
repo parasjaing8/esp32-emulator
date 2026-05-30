@@ -3,7 +3,11 @@ import React, {
   useCallback, useEffect,
 } from 'react';
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import { Buffer } from 'buffer';
 import { PIN_MAP, type ChipVariant, type PinDef, type PinMode } from '@/constants/gpio';
+import { getEsp32BleService } from '@/services/BLEService';
+import { performOtaTransfer } from '@/services/FirmwareUpdateService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,6 +51,11 @@ interface DeviceContextValue {
   boardInfo:      BoardInfo | null;
   uptime:         number;
   appPartition:   'os' | 'app';
+  // Auth
+  authNeeded:     { isClaimed: boolean } | null;
+  submitPassword: (password: string) => Promise<boolean>;
+  completeSetup:  (name: string, password: string) => Promise<boolean>;
+  dismissAuth:    () => void;
   // GPIO
   pinStates:      Record<number, number>;
   pinModes:       Record<number, PinMode>;
@@ -161,6 +170,7 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
   const [serialLines, setSerialLines] = useState<SerialLine[]>([]);
   const [otaProgress, setOtaProgress] = useState<number | null>(null);
   const [flashHistory, setFlashHistory] = useState<FlashRecord[]>([]);
+  const [authNeeded, setAuthNeeded] = useState<{ isClaimed: boolean } | null>(null);
 
   const simIntervals = useRef<ReturnType<typeof setInterval>[]>([]);
   const uptimeInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -235,26 +245,65 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
   // ── Scan / Connect / Disconnect ──────────────────────────────────────────
 
   const scanForDevices = useCallback(async (): Promise<DiscoveredDevice[]> => {
-    if (Platform.OS === 'web' || simMode) {
+    if (Platform.OS === 'web') {
       await new Promise<void>((r) => setTimeout(r, 1500));
       return [SIM_DEVICE];
     }
-    return [SIM_DEVICE]; // BLE TODO
-  }, [simMode]);
+    const bleService = getEsp32BleService();
+    const real = await bleService.discoverDevices();
+    return [SIM_DEVICE, ...real];
+  }, []);
 
   const connectToDevice = useCallback(async (device: DiscoveredDevice) => {
     setConnecting(true);
     try {
-      await new Promise<void>((r) => setTimeout(r, 800));
-      const board = device.isSim ? { ...SIM_BOARD } : { ...SIM_BOARD, mac: device.id };
-      setBoardInfo(board);
-      setAppPartition(board.app_partition);
+      if (device.isSim || Platform.OS === 'web') {
+        // Simulation path — unchanged
+        await new Promise<void>((r) => setTimeout(r, 800));
+        const board = { ...SIM_BOARD };
+        setBoardInfo(board);
+        setAppPartition(board.app_partition);
+        setConnected(true);
+        isSimConnected.current = true;
+        setSimMode(true);
+        addRxLine('--- Simulation mode ---');
+        addRxLine(`Board: ${board.chip} rev ${board.revision}`);
+        startSimulation(board);
+        return;
+      }
+
+      // Real BLE path
+      const bleService = getEsp32BleService();
+      await bleService.connect(device.id, {
+        onBoardInfo: (info) => {
+          setBoardInfo(info);
+          setAppPartition(info.app_partition);
+          if (info.pins?.length) {
+            setPinModes(buildInitialPinModes(info.pins));
+            setPinStates(buildInitialPinStates(info.pins, buildInitialPinModes(info.pins)));
+          }
+          addRxLine(`Board: ${info.chip} rev ${info.revision}`);
+          uptimeInterval.current = setInterval(() => setUptime((u) => u + 1), 1000);
+        },
+        onPinStates: (states) => {
+          const parsed: Record<number, number> = {};
+          Object.entries(states).forEach(([k, v]) => { parsed[Number(k)] = Number(v); });
+          setPinStates(parsed);
+        },
+        onSerialLine: (line) => addRxLine(line),
+        onDisconnect: () => {
+          if (uptimeInterval.current) clearInterval(uptimeInterval.current);
+          setConnected(false);
+          addRxLine('--- Disconnected ---');
+        },
+        onAuthNeeded: (isClaimed) => {
+          setAuthNeeded({ isClaimed });
+          addRxLine(isClaimed ? '--- Auth required ---' : '--- Setup required ---');
+        },
+      });
       setConnected(true);
-      isSimConnected.current = true;
-      setSimMode(device.isSim ?? true);
-      addRxLine('--- Connection established ---');
-      addRxLine(`Board: ${board.chip} rev ${board.revision}`);
-      startSimulation(board);
+      setSimMode(false);
+      isSimConnected.current = false;
     } finally {
       setConnecting(false);
     }
@@ -262,7 +311,9 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
 
   const disconnect = useCallback(() => {
     stopSimulation();
+    if (!simMode) getEsp32BleService().disconnect();
     isSimConnected.current = false;
+    if (uptimeInterval.current) { clearInterval(uptimeInterval.current); uptimeInterval.current = null; }
     setConnected(false);
     setBoardInfo(null);
     setPinStates({});
@@ -271,7 +322,7 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
     setUptime(0);
     setOtaProgress(null);
     setSimMode(true);
-  }, [stopSimulation]);
+  }, [stopSimulation, simMode]);
 
   // ── GPIO ─────────────────────────────────────────────────────────────────
 
@@ -281,12 +332,18 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
       setAdcValues((prev) => ({ ...prev, [pin]: Math.floor(Math.random() * 3000) + 500 }));
     }
     addRxLine(`GPIO${pin} mode → ${mode}`);
-  }, [addRxLine]);
+    if (!simMode) {
+      getEsp32BleService().writeGpioConfig(pin, mode).catch((e) => addRxLine(`ERR: ${e}`));
+    }
+  }, [addRxLine, simMode]);
 
   const writePin = useCallback((pin: number, value: number) => {
     setPinStates((prev) => ({ ...prev, [pin]: value }));
     addRxLine(`GPIO${pin} → ${value === 1 ? 'HIGH' : 'LOW'}`);
-  }, [addRxLine]);
+    if (!simMode) {
+      getEsp32BleService().writeGpioPin(pin, value).catch((e) => addRxLine(`ERR: ${e}`));
+    }
+  }, [addRxLine, simMode]);
 
   // ── Serial ───────────────────────────────────────────────────────────────
 
@@ -295,30 +352,58 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
       ...prev.slice(-300),
       { id: uid(), text: text.trimEnd(), dir: 'tx', ts: Date.now() },
     ]);
-    // Sim echo
     if (simMode) {
-      setTimeout(() => {
-        addRxLine(`OK: ${text.trim()}`);
-      }, 120 + Math.random() * 200);
+      setTimeout(() => addRxLine(`OK: ${text.trim()}`), 120 + Math.random() * 200);
+    } else {
+      getEsp32BleService().sendSerial(text + '\n').catch((e) => addRxLine(`ERR: ${e}`));
     }
   }, [simMode, addRxLine]);
 
   const clearSerial = useCallback(() => setSerialLines([]), []);
+
+  // ── Auth ─────────────────────────────────────────────────────────────────
+
+  const submitPassword = useCallback(async (password: string): Promise<boolean> => {
+    const ok = await getEsp32BleService().submitPassword(password);
+    if (ok) setAuthNeeded(null);
+    return ok;
+  }, []);
+
+  const completeSetup = useCallback(async (name: string, password: string): Promise<boolean> => {
+    const ok = await getEsp32BleService().completeSetup(name, password);
+    if (ok) setAuthNeeded(null);
+    return ok;
+  }, []);
+
+  const dismissAuth = useCallback(() => setAuthNeeded(null), []);
 
   // ── OTA ──────────────────────────────────────────────────────────────────
 
   const flashFirmware = useCallback(async (uri: string, name: string, sizeKb: number) => {
     setOtaProgress(0);
     addRxLine(`OTA START: ${name} (${sizeKb} KB)`);
-    const steps = 40;
-    for (let i = 1; i <= steps; i++) {
-      await new Promise<void>((r) => setTimeout(r, 80 + Math.random() * 60));
-      setOtaProgress(Math.round((i / steps) * 100));
+
+    if (simMode) {
+      const steps = 40;
+      for (let i = 1; i <= steps; i++) {
+        await new Promise<void>((r) => setTimeout(r, 80 + Math.random() * 60));
+        setOtaProgress(Math.round((i / steps) * 100));
+      }
+      addRxLine('OTA DONE — reboot pending');
+    } else {
+      const deviceId = getEsp32BleService().connectedDeviceId;
+      if (!deviceId) throw new Error('Not connected');
+      const b64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+      const bytes = new Uint8Array(Buffer.from(b64, 'base64'));
+      await performOtaTransfer(bytes, deviceId, (done, total) => {
+        setOtaProgress(Math.round((done / total) * 100));
+      });
+      addRxLine('OTA DONE — board rebooting');
     }
-    addRxLine('OTA DONE — reboot pending');
+
     setFlashHistory((h) => [{ name, sizeKb, date: Date.now() }, ...h].slice(0, 5));
     setOtaProgress(null);
-  }, [addRxLine]);
+  }, [addRxLine, simMode]);
 
   // ── Partition ────────────────────────────────────────────────────────────
 
@@ -326,10 +411,14 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
     setAppPartition(target);
     setBoardInfo((b) => b ? { ...b, app_partition: target } : b);
     addRxLine(`Rebooting to ${target.toUpperCase()} partition…`);
-  }, [addRxLine]);
+    if (!simMode) {
+      getEsp32BleService().bootPartition(target).catch((e) => addRxLine(`ERR: ${e}`));
+    }
+  }, [addRxLine, simMode]);
 
   const value: DeviceContextValue = {
     connected, connecting, simMode, boardInfo, uptime, appPartition,
+    authNeeded, submitPassword, completeSetup, dismissAuth,
     pinStates, pinModes, adcValues, setPinMode, writePin,
     serialLines, sendSerial, clearSerial,
     otaProgress, flashFirmware, flashHistory,

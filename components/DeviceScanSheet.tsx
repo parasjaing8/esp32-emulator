@@ -109,7 +109,7 @@ export function DeviceScanSheet({ visible, onClose, onSelectDevice, devices, isS
           {/* Device list */}
           {!isScanning && devices.length === 0 && (
             <View style={DS.noDevices}>
-              <Feather name="bluetooth-off" size={32} color={colors.mutedForeground} />
+              <Feather name="bluetooth" size={32} color={colors.mutedForeground} />
               <Text style={DS.noDevicesTitle}>No boards found</Text>
               <Text style={DS.noDevicesSub}>Make sure your ESP32 is powered on and running OS firmware.</Text>
               <TouchableOpacity style={DS.scanAgainBtn} onPress={onScan} activeOpacity={0.8}>

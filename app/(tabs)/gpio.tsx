@@ -130,7 +130,8 @@ function PinCard({ pin, mode, state, adcVal, onToggle, onLongPress }: {
     : isHigh && isOutput ? colors.success
     : colors.border;
 
-  const cardBg = isHigh && isOutput ? colors.success + '14' : colors.card;
+  const cardBg = isHigh && isOutput ? colors.success + '1A' : colors.card;
+  const borderWidth = isHigh && isOutput ? 2 : 1;
 
   const modeColor = isAdc ? colors.warning
     : isOutput ? colors.primary
@@ -145,9 +146,10 @@ function PinCard({ pin, mode, state, adcVal, onToggle, onLongPress }: {
     >
       <Animated.View style={[
         S.pinCard,
-        { borderColor, backgroundColor: cardBg },
+        { borderColor, backgroundColor: cardBg, borderWidth },
+        isHigh && isOutput && S.pinCardHighShadow,
         isSystem && S.pinCardSystem,
-        { opacity: flashAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.7, 1] }) },
+        { opacity: flashAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.6, 1] }) },
       ]}>
         {/* GPIO number badge */}
         <View style={[S.numBadge, { backgroundColor: isHigh ? colors.success + '22' : colors.border + '80' }]}>
@@ -258,7 +260,8 @@ const S = StyleSheet.create({
   row:          { gap: 10, marginBottom: 10 },
   pinWrap:      { flex: 1 },
   pinCard:      { borderRadius: 12, borderWidth: 1, padding: 12, gap: 5 },
-  pinCardSystem:{ borderColor: colors.warning + '50', backgroundColor: colors.warning + '06' },
+  pinCardSystem:     { borderColor: colors.warning + '50', backgroundColor: colors.warning + '06' },
+  pinCardHighShadow: { shadowColor: colors.success, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 6, elevation: 4 },
   pinCardHigh:  {},
   numBadge:     { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 2 },
   numText:      { fontSize: 18, fontFamily: 'Inter_700Bold' },
@@ -267,11 +270,11 @@ const S = StyleSheet.create({
   modeText:     { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
   sysNote:      { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.warning, fontStyle: 'italic' },
   stateRow:     { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  dot:          { width: 7, height: 7, borderRadius: 4 },
+  dot:          { width: 9, height: 9, borderRadius: 5 },
   stateText:    { fontSize: 12, fontFamily: 'Inter_700Bold' },
   adcSection:   { gap: 3, marginTop: 2 },
-  adcBarBg:     { height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden' },
-  adcBarFill:   { height: 4, backgroundColor: colors.warning, borderRadius: 2 },
+  adcBarBg:     { height: 5, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
+  adcBarFill:   { height: 5, backgroundColor: colors.warning, borderRadius: 3 },
   adcVal:       { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.warning, textAlign: 'right' },
   tapHint:      { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 2 },
   // Mode sheet

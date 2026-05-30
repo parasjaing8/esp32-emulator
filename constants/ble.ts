@@ -54,3 +54,14 @@ export const CHAR_PARTITION    = 'e32f0011-b5a3-f393-e0a9-e50e24dcca9e'; // WRIT
 // ── Board identification ──────────────────────────────────────────────────────
 export const OS_DEVICE_NAME_PREFIX = 'ESP32-OS';
 export const DEFAULT_PASSWORD      = '1234';
+
+// ── NimBLEOta protocol (separate GATT service — same as WaterTank) ────────────
+// These are the NimBLEOta library's fixed UUIDs, used by FirmwareUpdateService.ts
+export const BLE_OTA_SERVICE_UUID  = '00008018-0000-1000-8000-00805f9b34fb';
+export const BLE_OTA_CHAR_RECV_FW  = '00008020-0000-1000-8000-00805f9b34fb';
+export const BLE_OTA_CHAR_COMMAND  = '00008022-0000-1000-8000-00805f9b34fb';
+
+// ── BLE tuning ────────────────────────────────────────────────────────────────
+export const BLE_MTU_SIZE          = 512;
+export const BLE_SCAN_TIMEOUT      = 10000;
+export const BLE_RECONNECT_DELAYS  = [5000, 10000, 20000, 30000] as const;

@@ -15,7 +15,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Share } from "react-native";
 
-const STORAGE_KEY = "@watertank_diag";
+const STORAGE_KEY = "@esp32emu_diag";
 const MAX_ENTRIES = 500;
 
 export type LogLevel = "info" | "warn" | "error" | "fatal";
@@ -127,7 +127,7 @@ export function getLogStats(): { count: number; sizeKb: number } {
 
 export async function exportLogs(fwVersion?: string | null): Promise<void> {
   const header = [
-    "=== WaterTank Diagnostics ===",
+    "=== ESP32 Emulator Diagnostics ===",
     `Exported: ${new Date().toISOString()}`,
     `Firmware: ${fwVersion ? "v" + fwVersion : "unknown"}`,
     `Log entries: ${_buffer.length}`,
@@ -142,7 +142,7 @@ export async function exportLogs(fwVersion?: string | null): Promise<void> {
   });
   await Share.share({
     message: header + "\n" + (lines.join("\n") || "(no diagnostic logs recorded)"),
-    title: "WaterTank Diagnostics",
+    title: "ESP32 Emulator Diagnostics",
   });
 }
 

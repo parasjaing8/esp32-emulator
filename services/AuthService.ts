@@ -9,7 +9,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Buffer } from "buffer";
 
-const AUTH_KEY = "@watertank_auth";
+const AUTH_KEY = "@esp32emu_auth";
 
 export interface StoredDevice {
   deviceMac: string;
@@ -52,7 +52,7 @@ export async function clearSession(deviceMac: string): Promise<void> {
 
 export async function clearAllSessions(): Promise<void> {
   await AsyncStorage.removeItem(AUTH_KEY);
-  await AsyncStorage.removeItem("@watertank_preferred_device");
+  await AsyncStorage.removeItem("@esp32emu_preferred_device");
 }
 
 export async function listSessions(): Promise<StoredDevice[]> {
@@ -62,7 +62,7 @@ export async function listSessions(): Promise<StoredDevice[]> {
 
 export async function getPreferredDevice(): Promise<string | null> {
   try {
-    return await AsyncStorage.getItem("@watertank_preferred_device");
+    return await AsyncStorage.getItem("@esp32emu_preferred_device");
   } catch {
     return null;
   }
@@ -70,8 +70,8 @@ export async function getPreferredDevice(): Promise<string | null> {
 
 export async function setPreferredDevice(mac: string | null): Promise<void> {
   if (mac) {
-    await AsyncStorage.setItem("@watertank_preferred_device", mac);
+    await AsyncStorage.setItem("@esp32emu_preferred_device", mac);
   } else {
-    await AsyncStorage.removeItem("@watertank_preferred_device");
+    await AsyncStorage.removeItem("@esp32emu_preferred_device");
   }
 }

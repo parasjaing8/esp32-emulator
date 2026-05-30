@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useDevice, type DiscoveredDevice } from '@/context/DeviceContext';
 import { DeviceScanSheet } from '@/components/DeviceScanSheet';
+import { PairingSheet } from '@/components/PairingSheet';
 import { colors } from '@/constants/theme';
 
 function UptimeFmt({ secs }: { secs: number }) {
@@ -20,7 +21,8 @@ function UptimeFmt({ secs }: { secs: number }) {
 
 export default function BoardScreen() {
   const { boardInfo, connected, connecting, disconnect,
-          simMode, uptime, appPartition, scanForDevices, connectToDevice } = useDevice();
+          simMode, uptime, appPartition, scanForDevices, connectToDevice,
+          authNeeded, submitPassword, completeSetup, dismissAuth } = useDevice();
   const [showScan, setShowScan] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [devices, setDevices]   = useState<DiscoveredDevice[]>([]);
@@ -59,7 +61,7 @@ export default function BoardScreen() {
           )}
           {connected ? (
             <TouchableOpacity style={S.disconnBtn} onPress={disconnect} activeOpacity={0.75}>
-              <Feather name="bluetooth-off" size={15} color={colors.destructive} />
+              <Feather name="bluetooth" size={15} color={colors.destructive} />
               <Text style={S.disconnText}>Disconnect</Text>
             </TouchableOpacity>
           ) : (
@@ -141,6 +143,17 @@ export default function BoardScreen() {
         devices={devices}
         isScanning={scanning || connecting}
         onScan={handleScan}
+      />
+
+      <PairingSheet
+        visible={!!authNeeded}
+        isFirstTimeSetup={!authNeeded?.isClaimed}
+        onSetupRequired={() => {/* handled inside DeviceContext */}}
+        onSubmit={async (password) => {
+          const ok = await submitPassword(password);
+          if (!ok) return 'fail';
+          return authNeeded?.isClaimed ? 'ok' : 'setup_required';
+        }}
       />
     </SafeAreaView>
   );
