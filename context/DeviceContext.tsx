@@ -280,8 +280,9 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
           setBoardInfo(info);
           setAppPartition(info.app_partition);
           if (info.pins?.length) {
-            setPinModes(buildInitialPinModes(info.pins));
-            setPinStates(buildInitialPinStates(info.pins, buildInitialPinModes(info.pins)));
+            const modes = buildInitialPinModes(info.pins);
+            setPinModes(modes);
+            setPinStates(buildInitialPinStates(info.pins, modes));
           }
           addRxLine(`Board: ${info.chip} rev ${info.revision}`);
           uptimeInterval.current = setInterval(() => setUptime((u) => u + 1), 1000);
@@ -378,7 +379,15 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
     return ok;
   }, []);
 
-  const dismissAuth = useCallback(() => setAuthNeeded(null), []);
+  const dismissAuth = useCallback(() => {
+    setAuthNeeded(null);
+    if (!simMode) {
+      getEsp32BleService().disconnect();
+    }
+    setConnected(false);
+    setBoardInfo(null);
+    setSimMode(true);
+  }, [simMode]);
 
   // ── OTA ──────────────────────────────────────────────────────────────────
 
@@ -393,28 +402,36 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
         setOtaProgress(Math.round((i / steps) * 100));
       }
       addRxLine('OTA DONE — reboot pending');
+      setFlashHistory((h) => [{ name, sizeKb, date: Date.now() }, ...h].slice(0, 5));
+      setOtaProgress(null);
     } else {
       const deviceId = getEsp32BleService().connectedDeviceId;
       if (!deviceId) throw new Error('Not connected');
-      const b64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
-      const bytes = new Uint8Array(Buffer.from(b64, 'base64'));
-      await performOtaTransfer(bytes, deviceId, (done, total) => {
-        setOtaProgress(Math.round((done / total) * 100));
-      });
-      addRxLine('OTA DONE — board rebooting');
+      try {
+        const b64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+        const bytes = new Uint8Array(Buffer.from(b64, 'base64'));
+        await performOtaTransfer(bytes, deviceId, (done, total) => {
+          setOtaProgress(Math.round((done / total) * 100));
+        });
+        addRxLine('OTA DONE — board rebooting');
+        setFlashHistory((h) => [{ name, sizeKb, date: Date.now() }, ...h].slice(0, 5));
+      } catch (err) {
+        addRxLine(`OTA FAILED: ${err instanceof Error ? err.message : String(err)}`);
+        throw err;
+      } finally {
+        setOtaProgress(null);
+      }
     }
-
-    setFlashHistory((h) => [{ name, sizeKb, date: Date.now() }, ...h].slice(0, 5));
-    setOtaProgress(null);
   }, [addRxLine, simMode]);
 
   // ── Partition ────────────────────────────────────────────────────────────
 
   const bootPartition = useCallback((target: 'os' | 'app') => {
-    setAppPartition(target);
-    setBoardInfo((b) => b ? { ...b, app_partition: target } : b);
     addRxLine(`Rebooting to ${target.toUpperCase()} partition…`);
-    if (!simMode) {
+    if (simMode) {
+      setAppPartition(target);
+      setBoardInfo((b) => b ? { ...b, app_partition: target } : b);
+    } else {
       getEsp32BleService().bootPartition(target).catch((e) => addRxLine(`ERR: ${e}`));
     }
   }, [addRxLine, simMode]);
