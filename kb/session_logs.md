@@ -1,5 +1,25 @@
 # FlashLink — Session Logs
 
+## 2026-06-01 — Audit 1 fixes (branch m4, all 10 tasks)
+
+### What happened
+Audit 1 (15 findings) produced 10 tasks in `kb/tasks_audit1.md`. All applied on branch `m4`.
+
+### Tasks completed
+- **T001** — OTA failure now clears progress bar (try/catch/finally in DeviceContext + firmware.tsx)
+- **T002** — `dismissAuth` now calls `disconnect()` + resets connected/simMode state (no orphaned BLE)
+- **T003** — `GITHUB_RELEASES_API` updated to `parasjaing8/esp32-emulator`
+- **T004** — GPIO18/19 on ESP32-C3 restricted to INPUT_ONLY (USB D- / D+ cannot be set OUTPUT)
+- **T005** — `bootPartition` no longer optimistically updates UI on real BLE; waits for board reconnect
+- **T006** — Single CHAR_BOARD_INFO read per connection (removed redundant read in `_onAuthSuccess`)
+- **T007** — Dead constants `CHAR_OTA_CTRL` / `CHAR_OTA_DATA` deleted; NimBLEOta comment clarified
+- **T008** — `buildInitialPinModes` called once per `onBoardInfo` (stored in local var)
+- **T009** — `CrashReportService` docstring updated from "WaterTank app" to "FlashLink app"
+- **T010** — File picker now filters `application/octet-stream` (not `*/*`)
+
+### Commits on m4
+7 commits pushed. Branch: `m4`. Skipped issues: M3 (session name UX, deferred), M4 (broken npm test — no test files exist, deferred), M6 (pinModes from BLE notifications, deferred — needs firmware change), L2 (ADC BLE not implemented, deferred), L3 (OS_DEVICE_NAME_PREFIX branding, cosmetic).
+
 ## 2026-05-31 — Bug fix: blank Board screen + setup flow
 
 ### What happened

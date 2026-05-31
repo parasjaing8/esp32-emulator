@@ -1,5 +1,5 @@
 # FlashLink — Project Status
-_Last updated: 2026-05-31_
+_Last updated: 2026-06-01_
 
 ## App Version
 `1.0.0` — Phase 0-1 complete + blank-screen bug fixed. Real BLE wired. ESP32 OS firmware flashed and advertising.
@@ -35,6 +35,8 @@ The dual-partition "OS + app firmware" model has no public precedent.
 - [x] APK: app-release.apk built (82MB) — v2 built 2026-05-31 06:39 ✓
 - [x] fix: blank Board screen when connected but boardInfo null (DeviceSetupModal wired, loading spinner, completeSetup calls _runConnectionSetup)
 - [x] kb/plan1.md + kb/task1.md created
+- [x] Audit 1 (15 findings) — all 10 actionable tasks fixed on branch m4 (2026-06-01)
+- [x] UX audit + 3 design variant branches — in progress
 
 ## What's next (priority order)
 
