@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useDevice, type DiscoveredDevice } from '@/context/DeviceContext';
 import { DeviceScanSheet } from '@/components/DeviceScanSheet';
+import { DeviceSetupModal } from '@/components/DeviceSetupModal';
 import { PairingSheet } from '@/components/PairingSheet';
 import { colors } from '@/constants/theme';
 
@@ -23,9 +25,10 @@ export default function BoardScreen() {
   const { boardInfo, connected, connecting, disconnect,
           simMode, uptime, appPartition, scanForDevices, connectToDevice,
           authNeeded, submitPassword, completeSetup, dismissAuth } = useDevice();
-  const [showScan, setShowScan] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [devices, setDevices]   = useState<DiscoveredDevice[]>([]);
+  const [showScan, setShowScan]   = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
+  const [scanning, setScanning]   = useState(false);
+  const [devices, setDevices]     = useState<DiscoveredDevice[]>([]);
   const blinkAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -88,7 +91,15 @@ export default function BoardScreen() {
               <Text style={S.bigBtnText}>Scan for Boards</Text>
             </TouchableOpacity>
           </View>
-        ) : boardInfo ? (
+        ) : !boardInfo ? (
+          <View style={S.empty}>
+            <ActivityIndicator size="large" color={colors.primary} style={{ marginBottom: 16 }} />
+            <Text style={S.emptyTitle}>Connecting to board…</Text>
+            <Text style={S.emptySub}>
+              {authNeeded ? 'Enter your board password to continue.' : 'Reading board info over BLE.'}
+            </Text>
+          </View>
+        ) : (
           <>
             {/* Board info */}
             <View style={S.card}>
@@ -133,7 +144,7 @@ export default function BoardScreen() {
               <StatBox icon="hard-drive" label="Partition" value={appPartition.toUpperCase()} />
             </View>
           </>
-        ) : null}
+        )}
       </ScrollView>
 
       <DeviceScanSheet
@@ -146,13 +157,21 @@ export default function BoardScreen() {
       />
 
       <PairingSheet
-        visible={!!authNeeded}
+        visible={!!authNeeded && !showSetup}
         isFirstTimeSetup={!authNeeded?.isClaimed}
-        onSetupRequired={() => {/* handled inside DeviceContext */}}
+        onSetupRequired={() => setShowSetup(true)}
         onSubmit={async (password) => {
           const ok = await submitPassword(password);
           if (!ok) return 'fail';
           return authNeeded?.isClaimed ? 'ok' : 'setup_required';
+        }}
+      />
+
+      <DeviceSetupModal
+        visible={showSetup}
+        onSubmit={async (name, password) => {
+          const ok = await completeSetup(name, password);
+          if (ok) setShowSetup(false);
         }}
       />
     </SafeAreaView>
