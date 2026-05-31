@@ -2,7 +2,7 @@
 _Last updated: 2026-05-31_
 
 ## App Version
-`1.0.0` — Phase 0-1 complete. Real BLE wired. ESP32 OS firmware flashed and advertising.
+`1.0.0` — Phase 0-1 complete + blank-screen bug fixed. Real BLE wired. ESP32 OS firmware flashed and advertising.
 
 ## Stack
 Expo SDK ~54 | RN 0.81.5 | React 19 | TypeScript strict
@@ -32,7 +32,8 @@ The dual-partition "OS + app firmware" model has no public precedent.
 - [x] Firmware: NimBLEOta OTA (same protocol as FirmwareUpdateService.ts)
 - [x] Firmware: partition control (BOOT_OS / BOOT_APP + restart)
 - [x] expo prebuild run, android/ generated
-- [x] APK: app-release.apk built (82MB, unsigned debug) ✓
+- [x] APK: app-release.apk built (82MB) — v2 built 2026-05-31 06:39 ✓
+- [x] fix: blank Board screen when connected but boardInfo null (DeviceSetupModal wired, loading spinner, completeSetup calls _runConnectionSetup)
 - [x] kb/plan1.md + kb/task1.md created
 
 ## What's next

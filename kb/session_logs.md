@@ -1,5 +1,28 @@
 # ESP32 Emulator — Session Logs
 
+## 2026-05-31 — Bug fix: blank Board screen + setup flow
+
+### What happened
+User reported: connected board shows blank Board tab + GPIO says "No board."  
+Root cause: three separate bugs.
+
+### Bugs fixed (commit cd0c0d2)
+1. **BLEService.completeSetup()** — after firmware responds OK to first-time setup, `_runConnectionSetup()` was never called and the new session token was not stored. `boardInfo` was never set.
+2. **Board screen blank state** — `connected && !boardInfo` rendered `null` instead of a spinner. Added `ActivityIndicator` + contextual message ("Enter your board password" vs "Reading board info").
+3. **DeviceSetupModal not wired** — `PairingSheet.onSetupRequired` was a no-op comment. Wired it to `setShowSetup(true)`. Added `DeviceSetupModal` with `completeSetup()` callback.
+
+### Build
+- `./gradlew assembleRelease` — BUILD SUCCESSFUL 2m, 82MB APK
+- `gradlew clean` fails on stale CMake cache (GLOB mismatch after clean) — workaround: skip clean, run assembleRelease directly
+- APK: `android/app/build/outputs/apk/release/app-release.apk` (2026-05-31 06:39)
+
+### Emulator validation (partial)
+- Board disconnected state ✅
+- Scan sheet + SIM device ✅ (location + BLE permissions prompted and granted)
+- Board connected — board info, partitions, stats all rendered ✅
+- GPIO tab — 15 pins, ADC bars drifting live, OUTPUT HIGH/LOW state ✅
+- Pin toggle coordinate mapping issue in emulator driver (adb coordinate scaling) — visual confirmed correct from screenshots
+
 ## 2026-05-30 — Project scaffolded
 
 ### What was created
