@@ -175,6 +175,7 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
   const simIntervals = useRef<ReturnType<typeof setInterval>[]>([]);
   const uptimeInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const isSimConnected = useRef(false);
+  const userSetPins = useRef<Set<number>>(new Set());
 
   // ── Simulation helpers ───────────────────────────────────────────────────
 
@@ -198,18 +199,18 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
     // Uptime tick
     uptimeInterval.current = setInterval(() => setUptime((u) => u + 1), 1000);
 
-    // GPIO state changes every 2s
+    // GPIO state changes every 4s, low probability, never overwrite user-set pins
     const gpioInterval = setInterval(() => {
       setPinStates((prev) => {
         const next = { ...prev };
         board.pins.forEach((p) => {
-          if (modes[p.gpio] === 'OUTPUT' && Math.random() < 0.3) {
+          if (modes[p.gpio] === 'OUTPUT' && !userSetPins.current.has(p.gpio) && Math.random() < 0.1) {
             next[p.gpio] = next[p.gpio] === 1 ? 0 : 1;
           }
         });
         return next;
       });
-    }, 2000);
+    }, 4000);
 
     // ADC drift every 800ms
     const adcInterval = setInterval(() => {
@@ -313,6 +314,7 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
     stopSimulation();
     if (!simMode) getEsp32BleService().disconnect();
     isSimConnected.current = false;
+    userSetPins.current.clear();
     if (uptimeInterval.current) { clearInterval(uptimeInterval.current); uptimeInterval.current = null; }
     setConnected(false);
     setBoardInfo(null);
@@ -338,6 +340,7 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
   }, [addRxLine, simMode]);
 
   const writePin = useCallback((pin: number, value: number) => {
+    userSetPins.current.add(pin);
     setPinStates((prev) => ({ ...prev, [pin]: value }));
     addRxLine(`GPIO${pin} → ${value === 1 ? 'HIGH' : 'LOW'}`);
     if (!simMode) {
