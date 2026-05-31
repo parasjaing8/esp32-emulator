@@ -1,5 +1,24 @@
 # FlashLink — Session Logs
 
+## 2026-06-01 — UX audit + 3 design variant branches
+
+### Audit findings
+1. `quickBar` in terminal used `overflow: 'scroll'` (RN ignores this — needs ScrollView)
+2. Board screen stats row (3 boxes) was redundant with BOARD INFO card above it
+3. No way to reach simulation mode without going through scan sheet manually
+4. Boot buttons only on Firmware tab — not accessible from Board tab
+5. Terminal: no timestamps, no command history, fixed quick-commands
+6. GPIO: OUTPUT toggle affordance too small (just text hint, not a visual toggle)
+7. No "Check for OS Updates" button despite FirmwareUpdateService being implemented
+8. GPIO pin search: no way to find a specific pin quickly on 15-20 pin boards
+
+### Branches created
+- **ux-v1** — Polish + bug fixes: fixed quickBar ScrollView, timestamps + command history in terminal, boot buttons on Board, removed redundant stats row, SIM mode shortcut
+- **ux-v2** — Feature completeness: Quick Actions section on Board (router.push), GPIO search bar + pin count, visual toggle for OUTPUT pins, "Check for Updates" button wired to checkFirmwareUpdate()
+- **ux-v3** — Premium visual: GitHub Dark palette (background #010409), animated radar ring on empty state, hero connection banner (green glow dot, uptime, chip), 2×2 spec tiles, neon GPIO pin glow on HIGH, taller tab bar
+
+### All 3 branches pushed to remote
+
 ## 2026-06-01 — Audit 1 fixes (branch m4, all 10 tasks)
 
 ### What happened

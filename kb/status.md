@@ -36,7 +36,7 @@ The dual-partition "OS + app firmware" model has no public precedent.
 - [x] fix: blank Board screen when connected but boardInfo null (DeviceSetupModal wired, loading spinner, completeSetup calls _runConnectionSetup)
 - [x] kb/plan1.md + kb/task1.md created
 - [x] Audit 1 (15 findings) — all 10 actionable tasks fixed on branch m4 (2026-06-01)
-- [x] UX audit + 3 design variant branches — in progress
+- [x] UX audit — 8 findings, 3 design variant branches created (ux-v1, ux-v2, ux-v3)
 
 ## What's next (priority order)
 
