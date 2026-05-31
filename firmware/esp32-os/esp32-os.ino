@@ -42,9 +42,10 @@
 // ESP32-C3 usable GPIOs: 0-10, 20-21
 // Avoided: 11-17 (flash), 18-19 (USB D-/D+)
 #define MAX_GPIO 22
-static uint8_t gpioMode[MAX_GPIO]  = {};   // 0=INPUT 1=OUTPUT 2=INPUT_PULLUP 3=INPUT_PULLDOWN
-static uint8_t gpioState[MAX_GPIO] = {};   // cached state for change detection
-static uint8_t adcPin = 0;                 // last pin set for ADC read
+static uint8_t gpioMode[MAX_GPIO]       = {};   // 0=INPUT 1=OUTPUT 2=INPUT_PULLUP 3=INPUT_PULLDOWN
+static uint8_t gpioState[MAX_GPIO]      = {};   // cached state for change detection
+static bool    gpioConfigured[MAX_GPIO] = {};   // true once app explicitly sets a pin mode
+static uint8_t adcPin = 0;                      // last pin set for ADC read
 
 // Pins that must not be reconfigured as OUTPUT
 static bool isForbiddenOutput(uint8_t pin) {
@@ -254,22 +255,22 @@ class ClaimedCB : public NimBLECharacteristicCallbacks {
 
 // ── GPIO characteristic callbacks ─────────────────────────────────────────────
 
-// Notify current GPIO state as JSON
-static void notifyGpioState() {
-  if (!bleConnected || !charGpioState) return;
+// Build GPIO state JSON — only explicitly configured pins
+static size_t buildGpioStateJson(char* buf, size_t bufLen) {
   StaticJsonDocument<512> doc;
   JsonObject pins = doc.createNestedObject("pins");
   for (int i = 0; i < MAX_GPIO; i++) {
-    if (gpioMode[i] == 1) { // OUTPUT
-      char key[4]; snprintf(key, sizeof(key), "%d", i);
-      pins[key] = gpioState[i];
-    } else if (gpioMode[i] == 0 || gpioMode[i] == 2 || gpioMode[i] == 3) { // INPUT
-      char key[4]; snprintf(key, sizeof(key), "%d", i);
-      pins[key] = (uint8_t)digitalRead(i);
-    }
+    if (!gpioConfigured[i]) continue;
+    char key[4]; snprintf(key, sizeof(key), "%d", i);
+    pins[key] = (gpioMode[i] == 1) ? gpioState[i] : (uint8_t)digitalRead(i);
   }
   doc["ts"] = millis();
-  char buf[512]; size_t len = serializeJson(doc, buf);
+  return serializeJson(doc, buf, bufLen);
+}
+
+static void notifyGpioState() {
+  if (!bleConnected || !charGpioState) return;
+  char buf[512]; size_t len = buildGpioStateJson(buf, sizeof(buf));
   charGpioState->setValue((uint8_t*)buf, len);
   charGpioState->notify();
 }
@@ -284,7 +285,6 @@ class GpioConfigCB : public NimBLECharacteristicCallbacks {
     const char* mode = doc["mode"] | "INPUT";
     if (pin >= MAX_GPIO || isForbiddenOutput(pin)) return;
     if (strcmp(mode, "OUTPUT") == 0) {
-      if (isForbiddenOutput(pin)) return;
       gpioMode[pin] = 1; pinMode(pin, OUTPUT);
     } else if (strcmp(mode, "INPUT_PULLUP") == 0) {
       gpioMode[pin] = 2; pinMode(pin, INPUT_PULLUP);
@@ -293,6 +293,7 @@ class GpioConfigCB : public NimBLECharacteristicCallbacks {
     } else {
       gpioMode[pin] = 0; pinMode(pin, INPUT);
     }
+    gpioConfigured[pin] = true;
     Serial.printf("GPIO%d mode → %s\n", pin, mode);
     notifyGpioState();
   }
@@ -316,8 +317,8 @@ class GpioWriteCB : public NimBLECharacteristicCallbacks {
 
 class GpioStateCB : public NimBLECharacteristicCallbacks {
   void onRead(NimBLECharacteristic* c, NimBLEConnInfo&) override {
-    // Inline: build state JSON and return it
-    notifyGpioState();  // also sends notify; read returns same data
+    char buf[512]; size_t len = buildGpioStateJson(buf, sizeof(buf));
+    c->setValue((uint8_t*)buf, len);
   }
   void onSubscribe(NimBLECharacteristic*, NimBLEConnInfo&, uint16_t subVal) override {
     if (subVal > 0) notifyGpioState();
@@ -355,13 +356,13 @@ class SerialTxCB : public NimBLECharacteristicCallbacks {
 class PartitionCB : public NimBLECharacteristicCallbacks {
   void onRead(NimBLECharacteristic* c, NimBLEConnInfo&) override {
     const esp_partition_t* running = esp_ota_get_running_partition();
-    const esp_partition_t* next    = esp_ota_get_next_update_partition(nullptr);
     StaticJsonDocument<128> doc;
-    // Determine if we're running OS (ota_0) or App (ota_1)
     doc["active"] = (running->subtype == ESP_PARTITION_SUBTYPE_APP_OTA_0) ? "os" : "app";
-    // Check if app partition has anything valid
+    // Explicitly query ota_1 (app partition) for its description
+    const esp_partition_t* appPart = esp_partition_find_first(
+        ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, nullptr);
     esp_app_desc_t appDesc;
-    if (next && esp_ota_get_partition_description(next, &appDesc) == ESP_OK) {
+    if (appPart && esp_ota_get_partition_description(appPart, &appDesc) == ESP_OK) {
       doc["app_name"]    = appDesc.project_name;
       doc["app_version"] = appDesc.version;
     }
@@ -400,17 +401,16 @@ class PartitionCB : public NimBLECharacteristicCallbacks {
 class BoardInfoCB : public NimBLECharacteristicCallbacks {
   void onRead(NimBLECharacteristic* c, NimBLEConnInfo&) override {
     const esp_partition_t* running = esp_ota_get_running_partition();
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<384> doc;
     doc["chip"]          = ESP.getChipModel();
     doc["revision"]      = String("v") + String(ESP.getChipRevision() / 100) + "." + String(ESP.getChipRevision() % 100);
-    // Format MAC as AA:BB:CC:DD:EE:FF
     String bleAddr = NimBLEDevice::getAddress().toString().c_str();
     doc["mac"]           = bleAddr;
     doc["flash_mb"]      = ESP.getFlashChipSize() / (1024 * 1024);
     doc["psram_mb"]      = ESP.getPsramSize() / (1024 * 1024);
     doc["fw_version"]    = FW_VERSION;
     doc["app_partition"] = (running->subtype == ESP_PARTITION_SUBTYPE_APP_OTA_0) ? "os" : "app";
-    char buf[256]; size_t len = serializeJson(doc, buf);
+    char buf[384]; size_t len = serializeJson(doc, buf);
     c->setValue((uint8_t*)buf, len);
   }
 };
@@ -465,6 +465,7 @@ void pollGpioInputs() {
   if (now - lastGpioPoll < GPIO_POLL_MS) return;
   lastGpioPoll = now;
   for (int i = 0; i < MAX_GPIO; i++) {
+    if (!gpioConfigured[i]) continue;
     if (gpioMode[i] == 0 || gpioMode[i] == 2 || gpioMode[i] == 3) { // any INPUT
       uint8_t cur = (uint8_t)digitalRead(i);
       if (cur != gpioState[i]) {
@@ -493,10 +494,11 @@ void pollSerialRx() {
   if (now - lastSerialPoll < SERIAL_POLL_MS) return;
   lastSerialPoll = now;
   if (serialBufLen == 0 || !bleConnected || !charSerialRx) return;
-  // Split into BLE-MTU-sized chunks (MTU=512, ATT payload = MTU-3 = 509)
+  // 244 = minimum guaranteed ATT payload for BLE 4.x; NimBLE negotiates higher if supported
+  static const size_t SERIAL_BLE_CHUNK = 244;
   size_t offset = 0;
   while (offset < serialBufLen) {
-    size_t chunk = min((size_t)509, serialBufLen - offset);
+    size_t chunk = min(SERIAL_BLE_CHUNK, serialBufLen - offset);
     charSerialRx->setValue(serialBuf + offset, chunk);
     charSerialRx->notify();
     offset += chunk;
