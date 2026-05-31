@@ -108,3 +108,22 @@ CLAUDE.md, package.json, app.json, tsconfig.json
 4. Test OTA flash with WaterTank .bin → partition B → boot app
 5. UI polish run on GPIO + firmware screens
 6. Generate release keystore, sign APK for Play Store
+
+## 2026-05-31 — Session 2: GPIO flicker fix + full hardware pin verification
+
+### Fixes shipped
+- `fix: sim GPIO no longer fights user taps` (v1.1.1) — userSetPins ref, interval 2s→4s, prob 30%→10%
+
+### Hardware test results (BLE + serial readback, board ESP32-OS-C5B8)
+All 10 GPIO output pins verified HIGH/LOW via BLE notify. ADC 0–4 all valid. Serial bridge confirmed. Auth OK with board password.
+Serial echo timing is flaky (BLE WRITE_NR → UART jitter) — not a hardware issue. All BLE-level checks passed.
+
+### Lessons
+- Claimed boards don't advertise on boot — short press BOOT for 60s window
+- `./gradlew clean` breaks on stale CMake cache — skip it, run assembleRelease directly
+- Serial echo in BLE tests unreliable at 600ms window — need 1.2s+ and GPIO8 (LED_PIN) must be excluded (background blink loop races with test writes)
+- Test venv: `python3 -m venv /tmp/esp32test && pip install bleak pyserial`
+
+### Releases
+- v1.1.0: blank Board screen fix + DeviceSetupModal wired
+- v1.1.1: GPIO flicker fix

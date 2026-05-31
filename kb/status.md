@@ -36,7 +36,11 @@ The dual-partition "OS + app firmware" model has no public precedent.
 - [x] fix: blank Board screen when connected but boardInfo null (DeviceSetupModal wired, loading spinner, completeSetup calls _runConnectionSetup)
 - [x] kb/plan1.md + kb/task1.md created
 
-## What's next
+## What's next (priority order)
+
+1. Install v1.1.1 APK on Android phone → test real BLE: GPIO toggle, serial terminal
+2. Test OTA flash with a real .bin → partition B → boot app → boot OS back
+3. Move test script (`/tmp/esp32test/test_pins.py`) into `tests/` in repo
 
 ### Phase 2 — Serial + OTA wiring
 - [ ] Test real BLE connection on Android phone
