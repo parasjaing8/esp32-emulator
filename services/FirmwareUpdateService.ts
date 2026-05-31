@@ -8,8 +8,9 @@ import {
 import { getBleManager } from "@/services/BLEService";
 import { logOtaEvent, logOtaError } from "@/services/CrashReportService";
 
+// Expects GitHub releases tagged "fw-v1.2.3" with a manifest.json asset.
 const GITHUB_RELEASES_API =
-  "https://api.github.com/repos/parasjaing8/watertank-replit-build/releases/latest";
+  "https://api.github.com/repos/parasjaing8/esp32-emulator/releases/latest";
 
 export interface FirmwareManifest {
   version: string;
