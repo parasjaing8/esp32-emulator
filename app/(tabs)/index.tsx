@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useDevice, type DiscoveredDevice } from '@/context/DeviceContext';
 import { DeviceScanSheet } from '@/components/DeviceScanSheet';
 import { DeviceSetupModal } from '@/components/DeviceSetupModal';
@@ -22,9 +23,11 @@ function UptimeFmt({ secs }: { secs: number }) {
 }
 
 export default function BoardScreen() {
+  const router = useRouter();
   const { boardInfo, connected, connecting, disconnect,
           simMode, uptime, appPartition, scanForDevices, connectToDevice,
-          authNeeded, submitPassword, completeSetup, dismissAuth } = useDevice();
+          authNeeded, submitPassword, completeSetup, dismissAuth,
+          bootPartition } = useDevice();
   const [showScan, setShowScan]   = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [scanning, setScanning]   = useState(false);
@@ -126,7 +129,10 @@ export default function BoardScreen() {
 
             {/* Partitions */}
             <View style={S.card}>
-              <Text style={S.cardLabel}>FLASH PARTITIONS</Text>
+              <View style={S.cardHead}>
+                <Text style={S.cardLabel}>FLASH PARTITIONS</Text>
+                <Text style={S.activePartText}>Active: {appPartition.toUpperCase()}</Text>
+              </View>
               <View style={S.partRow}>
                 <PartCard label="Partition A" sub="OS Firmware"  ver={boardInfo.fw_version}       active={appPartition === 'os'}  color={colors.primary} />
                 <View style={S.arrow}>
@@ -135,13 +141,32 @@ export default function BoardScreen() {
                 </View>
                 <PartCard label="Partition B" sub="App Firmware" ver={boardInfo.app_version ?? '—'} active={appPartition === 'app'} color={colors.success} />
               </View>
+              <View style={S.bootRow}>
+                <TouchableOpacity
+                  style={[S.bootBtn, appPartition === 'os' && S.bootBtnActiveBlue]}
+                  onPress={() => bootPartition('os')} activeOpacity={0.8}
+                >
+                  <Feather name="refresh-cw" size={13} color={appPartition === 'os' ? colors.primary : colors.mutedForeground} />
+                  <Text style={[S.bootBtnText, appPartition === 'os' && { color: colors.primary }]}>Reboot OS</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[S.bootBtn, appPartition === 'app' && S.bootBtnActiveGreen]}
+                  onPress={() => bootPartition('app')} activeOpacity={0.8}
+                >
+                  <Feather name="refresh-cw" size={13} color={appPartition === 'app' ? colors.success : colors.mutedForeground} />
+                  <Text style={[S.bootBtnText, appPartition === 'app' && { color: colors.success }]}>Reboot App</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* Stats row */}
-            <View style={S.statsRow}>
-              <StatBox icon="sliders"   label="GPIO Pins"  value={String(boardInfo.pins.length)} />
-              <StatBox icon="cpu"       label="Chip"       value={boardInfo.chip.replace('ESP32-','')} />
-              <StatBox icon="hard-drive" label="Partition" value={appPartition.toUpperCase()} />
+            {/* Quick Actions */}
+            <View style={S.card}>
+              <Text style={S.cardLabel}>QUICK ACTIONS</Text>
+              <View style={S.qaRow}>
+                <QuickAction icon="sliders" label="GPIO" sub={`${boardInfo.pins.length} pins`} onPress={() => router.push('/(tabs)/gpio')} color={colors.primary} />
+                <QuickAction icon="terminal" label="Terminal" sub="UART0" onPress={() => router.push('/(tabs)/terminal')} color={colors.accent} />
+                <QuickAction icon="upload-cloud" label="Firmware" sub={boardInfo.fw_version} onPress={() => router.push('/(tabs)/firmware')} color={colors.success} />
+              </View>
             </View>
           </>
         )}
@@ -205,13 +230,18 @@ function PartCard({ label, sub, ver, active, color }: {
   );
 }
 
-function StatBox({ icon, label, value }: { icon: React.ComponentProps<typeof Feather>['name']; label: string; value: string }) {
+function QuickAction({ icon, label, sub, onPress, color }: {
+  icon: React.ComponentProps<typeof Feather>['name'];
+  label: string; sub: string; onPress: () => void; color: string;
+}) {
   return (
-    <View style={S.statBox}>
-      <Feather name={icon} size={16} color={colors.primary} />
-      <Text style={S.statVal}>{value}</Text>
-      <Text style={S.statLabel}>{label}</Text>
-    </View>
+    <TouchableOpacity style={S.qaCard} onPress={onPress} activeOpacity={0.8}>
+      <View style={[S.qaIcon, { backgroundColor: color + '18' }]}>
+        <Feather name={icon} size={20} color={color} />
+      </View>
+      <Text style={S.qaLabel}>{label}</Text>
+      <Text style={S.qaSub}>{sub}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -255,8 +285,15 @@ const S = StyleSheet.create({
   partVer:     { fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground },
   arrow:       { alignItems: 'center', gap: 2 },
   arrowLabel:  { fontSize: 8, fontFamily: 'Inter_700Bold', color: colors.mutedForeground, letterSpacing: 0.5 },
-  statsRow:    { flexDirection: 'row', gap: 10 },
-  statBox:     { flex: 1, backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, alignItems: 'center', gap: 5 },
-  statVal:     { fontSize: 15, fontFamily: 'Inter_700Bold', color: colors.foreground },
-  statLabel:   { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.mutedForeground },
+  activePartText: { fontSize: 11, fontFamily: 'Inter_600SemiBold', color: colors.mutedForeground },
+  bootRow:     { flexDirection: 'row', gap: 10 },
+  bootBtn:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
+  bootBtnActiveBlue:{ borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+  bootBtnActiveGreen:{ borderColor: colors.success, backgroundColor: colors.success + '12' },
+  bootBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.mutedForeground },
+  qaRow:       { flexDirection: 'row', gap: 10 },
+  qaCard:      { flex: 1, alignItems: 'center', gap: 6, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
+  qaIcon:      { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  qaLabel:     { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.foreground },
+  qaSub:       { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.mutedForeground },
 });

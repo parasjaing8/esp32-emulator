@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { Feather } from '@expo/vector-icons';
 import { useDevice } from '@/context/DeviceContext';
 import { colors } from '@/constants/theme';
+import { checkFirmwareUpdate, type FirmwareManifest } from '@/services/FirmwareUpdateService';
 
 function fmtDate(ms: number): string {
   const d = new Date(ms);
@@ -22,10 +23,13 @@ function fmtEta(progress: number, elapsed: number): string {
 
 export default function FirmwareScreen() {
   const { boardInfo, flashFirmware, otaProgress, bootPartition, appPartition, flashHistory } = useDevice();
-  const [selected, setSelected] = useState<{ name: string; uri: string; size: number } | null>(null);
-  const [flashDone, setFlashDone]   = useState(false);
-  const [startTime, setStartTime]   = useState(0);
-  const [elapsed, setElapsed]       = useState(0);
+  const [selected, setSelected]         = useState<{ name: string; uri: string; size: number } | null>(null);
+  const [flashDone, setFlashDone]       = useState(false);
+  const [startTime, setStartTime]       = useState(0);
+  const [elapsed, setElapsed]           = useState(0);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState<FirmwareManifest | null>(null);
+  const [updateChecked, setUpdateChecked]     = useState(false);
   const isConnected = !!boardInfo;
   const isFlashing  = otaProgress !== null;
 
@@ -74,6 +78,22 @@ export default function FirmwareScreen() {
         },
       ]
     );
+  }
+
+  async function checkUpdate() {
+    if (!boardInfo) return;
+    setCheckingUpdate(true);
+    setUpdateChecked(false);
+    setUpdateAvailable(null);
+    try {
+      const manifest = await checkFirmwareUpdate(boardInfo.fw_version);
+      setUpdateAvailable(manifest);
+      setUpdateChecked(true);
+    } catch {
+      Alert.alert('Update Check Failed', 'Could not reach GitHub. Check your internet connection.');
+    } finally {
+      setCheckingUpdate(false);
+    }
   }
 
   const barPct = `${otaProgress ?? 0}%` as `${number}%`;
@@ -135,6 +155,38 @@ export default function FirmwareScreen() {
                   <Text style={[S.bootBtnText, appPartition === 'app' && { color: colors.success }]}>Boot App</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* OS Firmware Updates */}
+            <View style={S.card}>
+              <Text style={S.cardLabel}>OS FIRMWARE UPDATES</Text>
+              <Text style={S.helpText}>Check GitHub for a newer OS firmware version for your board.</Text>
+              {updateChecked && (
+                <View style={[S.updateResult, updateAvailable ? S.updateResultAvail : S.updateResultNone]}>
+                  <Feather
+                    name={updateAvailable ? 'download-cloud' : 'check-circle'}
+                    size={16}
+                    color={updateAvailable ? colors.warning : colors.success}
+                  />
+                  <Text style={[S.updateResultText, { color: updateAvailable ? colors.warning : colors.success }]}>
+                    {updateAvailable
+                      ? `v${updateAvailable.version} available — ${updateAvailable.changelog}`
+                      : `Up to date (v${boardInfo?.fw_version})`}
+                  </Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={[S.checkBtn, (checkingUpdate || isFlashing) && S.flashBtnDim]}
+                onPress={checkUpdate}
+                disabled={checkingUpdate || isFlashing}
+                activeOpacity={0.8}
+              >
+                {checkingUpdate
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Feather name="refresh-cw" size={15} color="#fff" />
+                }
+                <Text style={S.checkBtnText}>{checkingUpdate ? 'Checking…' : 'Check for Updates'}</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Flash section */}
@@ -298,4 +350,10 @@ const S = StyleSheet.create({
   histName:     { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.foreground },
   histMeta:     { fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 1 },
   warning:      { fontSize: 12, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: 16, lineHeight: 18 },
+  updateResult: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 8 },
+  updateResultAvail: { backgroundColor: colors.warning + '12', borderWidth: 1, borderColor: colors.warning + '30' },
+  updateResultNone:  { backgroundColor: colors.success + '0E', borderWidth: 1, borderColor: colors.success + '30' },
+  updateResultText:  { fontSize: 12, fontFamily: 'Inter_400Regular', flex: 1, lineHeight: 17 },
+  checkBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.accent, borderRadius: 10, padding: 13 },
+  checkBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold', color: '#fff' },
 });

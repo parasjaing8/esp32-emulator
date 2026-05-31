@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Modal, Animated, Pressable,
+  Modal, Animated, Pressable, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -15,15 +15,20 @@ const FILTERS: Filter[] = ['ALL', 'OUTPUT', 'INPUT', 'ADC'];
 export default function GpioScreen() {
   const { boardInfo, pinStates, pinModes, adcValues, setPinMode, writePin, simMode } = useDevice();
   const [filter, setFilter]           = useState<Filter>('ALL');
+  const [search, setSearch]           = useState('');
   const [modePin, setModePin]         = useState<PinDef | null>(null);
 
   const pins: PinDef[] = boardInfo?.pins ?? [];
 
   const filtered = pins.filter((p) => {
     const m = pinModes[p.gpio] ?? p.defaultMode;
-    if (filter === 'OUTPUT') return m === 'OUTPUT' || m === 'PWM';
-    if (filter === 'INPUT')  return m === 'INPUT' || m === 'INPUT_PULLUP' || m === 'INPUT_PULLDOWN';
-    if (filter === 'ADC')    return m === 'ADC' || p.adcChannel !== undefined;
+    if (filter === 'OUTPUT') { if (!(m === 'OUTPUT' || m === 'PWM')) return false; }
+    else if (filter === 'INPUT')  { if (!(m === 'INPUT' || m === 'INPUT_PULLUP' || m === 'INPUT_PULLDOWN')) return false; }
+    else if (filter === 'ADC')    { if (!(m === 'ADC' || p.adcChannel !== undefined)) return false; }
+    if (search) {
+      const q = search.toLowerCase();
+      return p.label.toLowerCase().includes(q) || String(p.gpio).includes(q);
+    }
     return true;
   });
 
@@ -47,6 +52,28 @@ export default function GpioScreen() {
         )}
       </View>
 
+      {/* Search bar */}
+      <View style={S.searchRow}>
+        <View style={S.searchBox}>
+          <Feather name="search" size={14} color={colors.mutedForeground} />
+          <TextInput
+            style={S.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search pin…"
+            placeholderTextColor={colors.mutedForeground + '60'}
+            autoCapitalize="none"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Feather name="x" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       {/* Filter bar */}
       <View style={S.filterBar}>
         {FILTERS.map((f) => (
@@ -59,6 +86,7 @@ export default function GpioScreen() {
             <Text style={[S.filterText, filter === f && S.filterTextActive]}>{f}</Text>
           </TouchableOpacity>
         ))}
+        <Text style={S.pinCount}>{filtered.length}/{pins.length}</Text>
       </View>
 
       {!isConnected ? (
@@ -187,11 +215,14 @@ function PinCard({ pin, mode, state, adcVal, onToggle, onLongPress }: {
           </View>
         )}
 
-        {/* Toggle hint for output */}
+        {/* Toggle button for output */}
         {isOutput && !isSystem && (
-          <Text style={[S.tapHint, isHigh && { color: colors.success + 'AA' }]}>
-            Tap to {isHigh ? 'turn OFF' : 'turn ON'}
-          </Text>
+          <View style={[S.toggleTrack, isHigh && S.toggleTrackOn]}>
+            <View style={[S.toggleThumb, isHigh && S.toggleThumbOn]} />
+            <Text style={[S.toggleLabel, { color: isHigh ? colors.success : colors.mutedForeground }]}>
+              {isHigh ? 'ON' : 'OFF'}
+            </Text>
+          </View>
         )}
       </Animated.View>
     </Pressable>
@@ -248,7 +279,11 @@ const S = StyleSheet.create({
   liveBadge:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.success + '18', borderWidth: 1, borderColor: colors.success + '40' },
   liveDot:      { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
   liveText:     { fontSize: 10, fontFamily: 'Inter_700Bold', color: colors.success, letterSpacing: 0.6 },
-  filterBar:    { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  searchRow:    { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
+  searchBox:    { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.card, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 8 },
+  searchInput:  { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', color: colors.foreground },
+  pinCount:     { marginLeft: 'auto', fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground + '80' },
+  filterBar:    { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 8, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, alignItems: 'center' },
   filterBtn:    { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   filterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterText:   { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.mutedForeground },
@@ -276,7 +311,11 @@ const S = StyleSheet.create({
   adcBarBg:     { height: 5, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden' },
   adcBarFill:   { height: 5, backgroundColor: colors.warning, borderRadius: 3 },
   adcVal:       { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.warning, textAlign: 'right' },
-  tapHint:      { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 2 },
+  toggleTrack:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.border, borderRadius: 12, paddingHorizontal: 6, paddingVertical: 3, marginTop: 4, alignSelf: 'flex-start' },
+  toggleTrackOn:{ backgroundColor: colors.success + '30' },
+  toggleThumb:  { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.mutedForeground },
+  toggleThumbOn:{ backgroundColor: colors.success },
+  toggleLabel:  { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
   // Mode sheet
   overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   sheet:        { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, gap: 4 },
