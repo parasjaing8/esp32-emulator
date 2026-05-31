@@ -30,16 +30,7 @@ export const CHAR_SERIAL_TX    = 'e32f0008-b5a3-f393-e0a9-e50e24dcca9e'; // WRIT
 export const CHAR_SERIAL_RX    = 'e32f0009-b5a3-f393-e0a9-e50e24dcca9e'; // NOTIFY
 // Raw bytes received from ESP32 UART0
 
-// ── OTA firmware flash ────────────────────────────────────────────────────────
-// Reuses the same OTA protocol from WaterTank (proven 24/26 bench tests)
-export const CHAR_OTA_CTRL     = 'e32f000a-b5a3-f393-e0a9-e50e24dcca9e'; // WRITE + NOTIFY
-// Write: JSON { cmd: "START", size, sha256 } | { cmd: "ABORT" }
-// Notify: JSON { status: "READY" | "PROGRESS" | "DONE" | "ERROR", pct? }
-
-export const CHAR_OTA_DATA     = 'e32f000b-b5a3-f393-e0a9-e50e24dcca9e'; // WRITE
-// Raw binary firmware chunks (512B each)
-
-// ── Auth (same model as WaterTank) ────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────────────────────
 export const CHAR_AUTH         = 'e32f000c-b5a3-f393-e0a9-e50e24dcca9e'; // WRITE + READ
 export const CHAR_SESSION      = 'e32f000d-b5a3-f393-e0a9-e50e24dcca9e'; // READ
 export const CHAR_SETUP        = 'e32f000e-b5a3-f393-e0a9-e50e24dcca9e'; // WRITE
@@ -55,8 +46,10 @@ export const CHAR_PARTITION    = 'e32f0011-b5a3-f393-e0a9-e50e24dcca9e'; // WRIT
 export const OS_DEVICE_NAME_PREFIX = 'ESP32-OS';
 export const DEFAULT_PASSWORD      = '1234';
 
-// ── NimBLEOta protocol (separate GATT service — same as WaterTank) ────────────
-// These are the NimBLEOta library's fixed UUIDs, used by FirmwareUpdateService.ts
+// ── OTA firmware flash ────────────────────────────────────────────────────────
+// OTA uses the NimBLEOta library's separate GATT service (not the OS service above).
+// FirmwareUpdateService.ts implements the full NimBLEOta protocol.
+// These are the NimBLEOta library's fixed UUIDs.
 export const BLE_OTA_SERVICE_UUID  = '00008018-0000-1000-8000-00805f9b34fb';
 export const BLE_OTA_CHAR_RECV_FW  = '00008020-0000-1000-8000-00805f9b34fb';
 export const BLE_OTA_CHAR_COMMAND  = '00008022-0000-1000-8000-00805f9b34fb';
