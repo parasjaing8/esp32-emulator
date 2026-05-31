@@ -24,7 +24,8 @@ function UptimeFmt({ secs }: { secs: number }) {
 export default function BoardScreen() {
   const { boardInfo, connected, connecting, disconnect,
           simMode, uptime, appPartition, scanForDevices, connectToDevice,
-          authNeeded, submitPassword, completeSetup, dismissAuth } = useDevice();
+          authNeeded, submitPassword, completeSetup, dismissAuth,
+          bootPartition } = useDevice();
   const [showScan, setShowScan]   = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [scanning, setScanning]   = useState(false);
@@ -85,10 +86,14 @@ export default function BoardScreen() {
           <View style={S.empty}>
             <View style={S.emptyIcon}><Feather name="cpu" size={44} color={colors.primary} /></View>
             <Text style={S.emptyTitle}>No board connected</Text>
-            <Text style={S.emptySub}>Scan for an ESP32 running OS firmware, or connect to simulation mode.</Text>
+            <Text style={S.emptySub}>Scan for an ESP32 running FlashLink OS firmware over Bluetooth.</Text>
             <TouchableOpacity style={S.bigBtn} onPress={openScanner} activeOpacity={0.8}>
               <Feather name="search" size={18} color="#fff" />
               <Text style={S.bigBtnText}>Scan for Boards</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={S.simBtn} onPress={openScanner} activeOpacity={0.8}>
+              <Feather name="monitor" size={15} color={colors.primary} />
+              <Text style={S.simBtnText}>Try Simulation Mode</Text>
             </TouchableOpacity>
           </View>
         ) : !boardInfo ? (
@@ -135,13 +140,24 @@ export default function BoardScreen() {
                 </View>
                 <PartCard label="Partition B" sub="App Firmware" ver={boardInfo.app_version ?? '—'} active={appPartition === 'app'} color={colors.success} />
               </View>
-            </View>
-
-            {/* Stats row */}
-            <View style={S.statsRow}>
-              <StatBox icon="sliders"   label="GPIO Pins"  value={String(boardInfo.pins.length)} />
-              <StatBox icon="cpu"       label="Chip"       value={boardInfo.chip.replace('ESP32-','')} />
-              <StatBox icon="hard-drive" label="Partition" value={appPartition.toUpperCase()} />
+              <View style={S.bootRow}>
+                <TouchableOpacity
+                  style={[S.bootBtn, appPartition === 'os' && S.bootBtnActive]}
+                  onPress={() => bootPartition('os')}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="refresh-cw" size={13} color={appPartition === 'os' ? colors.primary : colors.mutedForeground} />
+                  <Text style={[S.bootBtnText, appPartition === 'os' && { color: colors.primary }]}>Boot OS</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[S.bootBtn, appPartition === 'app' && S.bootBtnActiveGreen]}
+                  onPress={() => bootPartition('app')}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="refresh-cw" size={13} color={appPartition === 'app' ? colors.success : colors.mutedForeground} />
+                  <Text style={[S.bootBtnText, appPartition === 'app' && { color: colors.success }]}>Boot App</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </>
         )}
@@ -205,15 +221,6 @@ function PartCard({ label, sub, ver, active, color }: {
   );
 }
 
-function StatBox({ icon, label, value }: { icon: React.ComponentProps<typeof Feather>['name']; label: string; value: string }) {
-  return (
-    <View style={S.statBox}>
-      <Feather name={icon} size={16} color={colors.primary} />
-      <Text style={S.statVal}>{value}</Text>
-      <Text style={S.statLabel}>{label}</Text>
-    </View>
-  );
-}
 
 const S = StyleSheet.create({
   root:        { flex: 1, backgroundColor: colors.background },
@@ -234,6 +241,13 @@ const S = StyleSheet.create({
   emptySub:    { fontSize: 14, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: 32, lineHeight: 21 },
   bigBtn:      { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 28, marginTop: 6 },
   bigBtnText:  { fontSize: 15, fontFamily: 'Inter_600SemiBold', color: '#fff' },
+  simBtn:      { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, borderWidth: 1, borderColor: colors.primary + '40', backgroundColor: colors.primary + '0A', marginTop: 4 },
+  simBtnText:  { fontSize: 13, fontFamily: 'Inter_500Medium', color: colors.primary },
+  bootRow:     { flexDirection: 'row', gap: 10 },
+  bootBtn:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
+  bootBtnActive:     { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+  bootBtnActiveGreen:{ borderColor: colors.success, backgroundColor: colors.success + '12' },
+  bootBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.mutedForeground },
   card:        { backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 16, gap: 14 },
   cardHead:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardLabel:   { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 1, color: colors.mutedForeground },
@@ -255,8 +269,4 @@ const S = StyleSheet.create({
   partVer:     { fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground },
   arrow:       { alignItems: 'center', gap: 2 },
   arrowLabel:  { fontSize: 8, fontFamily: 'Inter_700Bold', color: colors.mutedForeground, letterSpacing: 0.5 },
-  statsRow:    { flexDirection: 'row', gap: 10 },
-  statBox:     { flex: 1, backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 14, alignItems: 'center', gap: 5 },
-  statVal:     { fontSize: 15, fontFamily: 'Inter_700Bold', color: colors.foreground },
-  statLabel:   { fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.mutedForeground },
 });

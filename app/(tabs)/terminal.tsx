@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, Platform, KeyboardAvoidingView,
+  TouchableOpacity, Platform, KeyboardAvoidingView, ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -9,15 +9,23 @@ import { useDevice } from '@/context/DeviceContext';
 import { colors } from '@/constants/theme';
 
 const BAUD_OPTIONS = [9600, 115200, 921600];
-const QUICK_CMDS  = ['help\r\n', 'reset\r\n', 'gpio read 4\r\n', 'adc read 1\r\n', 'uptime\r\n'];
+const QUICK_CMDS  = ['help', 'reset', 'gpio read 4', 'adc read 1', 'uptime', 'gpio list', 'version'];
+
+function fmtTime(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
 
 export default function TerminalScreen() {
   const { boardInfo, serialLines, sendSerial, clearSerial, simMode } = useDevice();
   const insets = useSafeAreaInsets();
-  const [input, setInput]       = useState('');
-  const [paused, setPaused]     = useState(false);
-  const [baud, setBaud]         = useState(115200);
-  const [showBaud, setShowBaud] = useState(false);
+  const [input, setInput]             = useState('');
+  const [paused, setPaused]           = useState(false);
+  const [baud, setBaud]               = useState(115200);
+  const [showBaud, setShowBaud]       = useState(false);
+  const [showTimestamps, setShowTimestamps] = useState(false);
+  const [history, setHistory]         = useState<string[]>([]);
+  const [histIdx, setHistIdx]         = useState(-1);
   const listRef = useRef<FlatList>(null);
   const prevLen = useRef(0);
   const isConnected = !!boardInfo;
@@ -31,13 +39,24 @@ export default function TerminalScreen() {
 
   const send = useCallback(() => {
     if (!input.trim()) return;
-    sendSerial(input.trimEnd() + '\r\n');
+    const cmd = input.trimEnd();
+    sendSerial(cmd + '\r\n');
+    setHistory((h) => [cmd, ...h.filter((c) => c !== cmd)].slice(0, 50));
+    setHistIdx(-1);
     setInput('');
   }, [input, sendSerial]);
 
   const sendQuick = useCallback((cmd: string) => {
-    sendSerial(cmd);
+    sendSerial(cmd + '\r\n');
   }, [sendSerial]);
+
+  const navigateHistory = useCallback((dir: 'up' | 'down') => {
+    setHistIdx((idx) => {
+      const next = dir === 'up' ? Math.min(idx + 1, history.length - 1) : Math.max(idx - 1, -1);
+      setInput(next === -1 ? '' : history[next]);
+      return next;
+    });
+  }, [history]);
 
   const isLive = isConnected && serialLines.length > 0;
 
@@ -73,6 +92,10 @@ export default function TerminalScreen() {
           <Feather name="settings" size={14} color={showBaud ? colors.primary : colors.mutedForeground} />
           <Text style={[S.toolText, showBaud && { color: colors.primary }]}>{baud.toLocaleString()}</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={S.toolBtn} onPress={() => setShowTimestamps(t => !t)} activeOpacity={0.7}>
+          <Feather name="clock" size={14} color={showTimestamps ? colors.primary : colors.mutedForeground} />
+          <Text style={[S.toolText, showTimestamps && { color: colors.primary }]}>TS</Text>
+        </TouchableOpacity>
         <Text style={S.lineCount}>{serialLines.length} lines</Text>
       </View>
 
@@ -107,12 +130,17 @@ export default function TerminalScreen() {
             style={S.log}
             scrollEnabled={!!serialLines.length}
             renderItem={({ item }) => (
-              <Text style={[S.line, item.dir === 'tx' && S.lineTx]}>
-                <Text style={item.dir === 'tx' ? S.dirTx : S.dirRx}>
-                  {item.dir === 'tx' ? '→ ' : '← '}
+              <View style={S.lineRow}>
+                {showTimestamps && (
+                  <Text style={S.lineTs}>{fmtTime(item.ts)}</Text>
+                )}
+                <Text style={[S.line, item.dir === 'tx' && S.lineTx]}>
+                  <Text style={item.dir === 'tx' ? S.dirTx : S.dirRx}>
+                    {item.dir === 'tx' ? '→ ' : '← '}
+                  </Text>
+                  {item.text}
                 </Text>
-                {item.text}
-              </Text>
+              </View>
             )}
             ListEmptyComponent={<Text style={S.emptyLog}>Waiting for serial output…</Text>}
           />
@@ -122,7 +150,7 @@ export default function TerminalScreen() {
             keyboardVerticalOffset={0}
           >
             {/* Quick-send buttons */}
-            <View style={S.quickBar}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={S.quickBar} contentContainerStyle={S.quickBarContent}>
               {QUICK_CMDS.map((cmd) => (
                 <TouchableOpacity
                   key={cmd}
@@ -130,17 +158,25 @@ export default function TerminalScreen() {
                   onPress={() => sendQuick(cmd)}
                   activeOpacity={0.7}
                 >
-                  <Text style={S.quickText}>{cmd.replace('\r\n', '')}</Text>
+                  <Text style={S.quickText}>{cmd}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
             {/* Input row */}
             <View style={[S.inputRow, { paddingBottom: insets.bottom + 8 }]}>
+              <View style={S.histBtns}>
+                <TouchableOpacity onPress={() => navigateHistory('up')} activeOpacity={0.7} disabled={history.length === 0}>
+                  <Feather name="chevron-up" size={18} color={history.length > 0 ? colors.mutedForeground : colors.border} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigateHistory('down')} activeOpacity={0.7} disabled={histIdx < 0}>
+                  <Feather name="chevron-down" size={18} color={histIdx >= 0 ? colors.mutedForeground : colors.border} />
+                </TouchableOpacity>
+              </View>
               <TextInput
                 style={S.input}
                 value={input}
-                onChangeText={setInput}
+                onChangeText={(t) => { setInput(t); setHistIdx(-1); }}
                 placeholder="Send command…"
                 placeholderTextColor={colors.mutedForeground + '80'}
                 returnKeyType="send"
@@ -190,11 +226,15 @@ const S = StyleSheet.create({
   dirRx:          { color: '#4ade80' },
   dirTx:          { color: '#3b82f6' },
   emptyLog:       { color: colors.mutedForeground + '60', fontSize: 12, textAlign: 'center', marginTop: 40, fontFamily: 'Inter_400Regular' },
-  quickBar:       { flexDirection: 'row', flexWrap: 'nowrap', paddingHorizontal: 12, paddingVertical: 6, gap: 6, backgroundColor: '#0d1220', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border + '40', overflow: 'scroll' },
+  lineRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  lineTs:         { fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: colors.mutedForeground + '50', paddingTop: 2, minWidth: 64 },
+  quickBar:       { backgroundColor: '#0d1220', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border + '40', maxHeight: 40 },
+  quickBarContent:{ flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 6, gap: 6 },
   quickBtn:       { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   quickText:      { fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: colors.mutedForeground },
-  inputRow:       { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingTop: 8, backgroundColor: '#0d1220' },
+  inputRow:       { flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingTop: 8, alignItems: 'center', backgroundColor: '#0d1220' },
+  histBtns:       { flexDirection: 'column', alignItems: 'center', gap: 0 },
   input:          { flex: 1, backgroundColor: colors.card, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: 10, color: '#86efac', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 13 },
-  sendBtn:        { backgroundColor: colors.primary, borderRadius: 10, width: 44, alignItems: 'center', justifyContent: 'center' },
+  sendBtn:        { backgroundColor: colors.primary, borderRadius: 10, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   sendBtnDim:     { opacity: 0.5 },
 });
