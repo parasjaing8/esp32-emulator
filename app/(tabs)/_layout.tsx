@@ -6,25 +6,32 @@ import { colors } from '@/constants/theme';
 export default function TabLayout() {
   return (
     <Tabs
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarStyle: {
           backgroundColor: colors.card,
-          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopWidth: 1,
           borderTopColor: colors.border,
-          elevation: 0,
-          shadowOpacity: 0,
-          height: 60,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOpacity: 0.4,
+          shadowRadius: 8,
+          height: 62,
           paddingBottom: 8,
           paddingTop: 6,
         },
         tabBarLabelStyle: {
           fontSize: 11,
+          fontFamily: 'Inter_600SemiBold',
           marginBottom: 2,
         },
-      }}
+        tabBarItemStyle: {
+          borderTopWidth: 2,
+          borderTopColor: 'transparent',
+        },
+      })}
     >
       <Tabs.Screen
         name="index"
