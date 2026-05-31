@@ -1,5 +1,5 @@
 /**
- * CrashReportService — structured diagnostic log for WaterTank app.
+ * CrashReportService — structured diagnostic log for FlashLink app.
  *
  * Phone-side only. Ring buffer (500 entries ≈ 175KB max) in AsyncStorage.
  * No BLE transfer needed — phone storage is negligible, board stores nothing.
