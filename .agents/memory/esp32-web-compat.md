@@ -1,5 +1,5 @@
 ---
-name: ESP32 Emulator web/native compat
+name: FlashLink web/native compat
 description: Native module import chain issues that crash the Expo web preview; version pins and workarounds.
 ---
 

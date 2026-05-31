@@ -1,4 +1,4 @@
-# ESP32 Emulator — Project Status
+# FlashLink — Project Status
 _Last updated: 2026-05-31_
 
 ## App Version
@@ -19,7 +19,7 @@ The dual-partition "OS + app firmware" model has no public precedent.
 ## What's done (as of 2026-05-31)
 - [x] Full UI — Board, GPIO, Terminal, Firmware (simulation mode working)
 - [x] Phase 0: WaterTank cleanup — deleted Event.ts, database.ts, IDeviceService.ts, NotificationService.ts
-- [x] Phase 0: AuthService/CrashReportService storage keys renamed @esp32emu_*
+- [x] Phase 0: AuthService/CrashReportService storage keys renamed @flashlink_*
 - [x] Phase 0: BLE constants + NimBLEOta UUIDs added to constants/ble.ts
 - [x] Phase 1: BLEService.ts rewritten as ESP32BLEService (scan, connect, auth, GPIO, serial)
 - [x] Phase 1: DeviceContext wired for real BLE — all actions have real + sim paths
@@ -59,7 +59,7 @@ The dual-partition "OS + app firmware" model has no public precedent.
 
 ### Phase 5 — Build & Ship
 - [ ] Generate release keystore + sign APK
-- [ ] Decide app name (ESP32 Emulator is a misnomer)
+- [ ] Decide app name (FlashLink is a misnomer)
 - [ ] Play Store listing
 
 ## Architecture decisions
@@ -76,7 +76,7 @@ The dual-partition "OS + app firmware" model has no public precedent.
 - Flash firmware: espressif/arduino-esp32 3.3.8, CDCOnBoot=cdc
 
 ## Open questions
-- Naming: "ESP32 Emulator" is a misnomer. Decide before Play Store launch.
+- Naming: **FlashLink** — finalized 2026-06-01. `android.package`: `com.parasjain.flashlink`.
 - PWM: expose in v1 or defer? → Defer to v1.1.
 - iOS: defer until Android proven.
 - Open source the app? → Yes, MIT.

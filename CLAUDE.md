@@ -1,4 +1,4 @@
-# ESP32 Emulator — Claude Code Instructions
+# FlashLink — Claude Code Instructions
 
 ## What this is
 Android app that connects to any ESP32 board over BLE and provides:

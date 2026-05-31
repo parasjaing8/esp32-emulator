@@ -1,4 +1,4 @@
-# ESP32 Emulator — Session Logs
+# FlashLink — Session Logs
 
 ## 2026-05-31 — Bug fix: blank Board screen + setup flow
 
@@ -26,7 +26,7 @@ Root cause: three separate bugs.
 ## 2026-05-30 — Project scaffolded
 
 ### What was created
-- Full project scaffold under `~/dev/apps/esp32-emulator/`
+- Full project scaffold under `~/dev/apps/flashlink/`
 - 4-tab app: Board / GPIO / Terminal / Firmware
 - BLE OS protocol defined: 14 characteristics (board info, GPIO, serial, OTA, auth, partition)
 - GPIO pin maps for 5 chip variants (ESP32, C3, S3, C6, S2)
@@ -66,7 +66,7 @@ CLAUDE.md, package.json, app.json, tsconfig.json
 - `kb/market.md` created — full competitive landscape table, demand signals, UVP, target segments, distribution strategy, moat analysis
 - `kb/status.md` updated — added market position summary, UVP, Phase 2 go-to-market tasks
 - Replit prompt written for full UX build (simulation mode + beautiful UI, all 4 tabs)
-- GitHub repo created: https://github.com/parasjaing8/esp32-emulator
+- GitHub repo created: https://github.com/parasjaing8/flashlink
 
 ### What's next
 1. `expo prebuild` to generate android/ native code
@@ -79,7 +79,7 @@ CLAUDE.md, package.json, app.json, tsconfig.json
 
 ### What was done
 - Phase 0: Deleted WaterTank artifacts (Event.ts, database.ts, IDeviceService.ts, NotificationService.ts)
-- Phase 0: Renamed storage keys @watertank_* → @esp32emu_* in AuthService, CrashReportService
+- Phase 0: Renamed storage keys @watertank_* → @flashlink_* in AuthService, CrashReportService
 - Phase 0: Added NimBLEOta UUIDs + BLE tuning constants to constants/ble.ts
 - Phase 0: Removed reanimated babel plugin (not needed, was blocking Android build)
 - Phase 1: Rewrote BLEService.ts as ESP32BLEService — scan, connect, auth handshake, GPIO, serial, OTA, partition

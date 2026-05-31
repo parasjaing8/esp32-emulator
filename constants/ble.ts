@@ -1,4 +1,4 @@
-// ESP32 Emulator OS — BLE protocol
+// FlashLink OS — BLE protocol
 // The "OS firmware" on ESP32 exposes these characteristics.
 // Project firmware (WaterTank, custom, etc.) lives in the other OTA partition.
 

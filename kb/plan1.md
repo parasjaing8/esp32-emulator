@@ -1,4 +1,4 @@
-# ESP32 Emulator — Product Plan (Vision to Play Store)
+# FlashLink — Product Plan (Vision to Play Store)
 
 ## What this app does
 Android app that turns any ESP32 into a wireless dev board over BLE:
@@ -35,8 +35,8 @@ Remove WaterTank artifacts. Zero WaterTank references in source files after this
 - `services/IDeviceService.ts`
 
 **Rename storage keys only:**
-- `services/AuthService.ts` — `@watertank_auth` → `@esp32emu_auth`
-- `services/CrashReportService.ts` — `@watertank_diag` → `@esp32emu_diag`
+- `services/AuthService.ts` — `@watertank_auth` → `@flashlink_auth`
+- `services/CrashReportService.ts` — `@watertank_diag` → `@flashlink_diag`
 
 **Add to `constants/ble.ts`:**
 ```ts
@@ -151,8 +151,7 @@ Can start in parallel with Phase 2.
 
 ## Phase 5 — Build + Hardware Test
 
-**Decide app name first** — `android.package` cannot change after Play Store submission.
-Options: ESP32 Commander / BoardLink / ESP Deck (current name is a misnomer).
+**App name: FlashLink** — finalized 2026-06-01. `android.package`: `com.parasjain.flashlink`.
 
 **Build:**
 ```sh
@@ -188,7 +187,7 @@ Generate keystore, add `signingConfigs` to `android/app/build.gradle`.
 
 **Open source Arduino library** (ecosystem moat):
 ```cpp
-#include <ESP32EmulatorOS.h>  // 1 line makes any sketch app-compatible
+#include <FlashLinkOS.h>  // 1 line makes any sketch app-compatible
 ```
 
 **Community seed:** r/esp32, r/arduino, Hackaday.io, Arduino Forum.

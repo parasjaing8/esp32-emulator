@@ -1,2 +1,2 @@
-- [ESP32 Emulator native-module web compat](esp32-web-compat.md) — react-native-keyboard-controller/reanimated/worklets chain crashes web bundler; remove KeyboardProvider from layout and use plain ScrollView.
+- [FlashLink native-module web compat](esp32-web-compat.md) — react-native-keyboard-controller/reanimated/worklets chain crashes web bundler; remove KeyboardProvider from layout and use plain ScrollView.
 - [Worklets version for SDK 54](esp32-web-compat.md) — react-native-worklets must be 0.5.1 for Expo SDK 54 / reanimated 4.x; 0.8+ or 0.9+ will cause bundle failures.

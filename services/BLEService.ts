@@ -1,4 +1,4 @@
-// ESP32BLEService — BLE implementation for ESP32 Emulator OS protocol.
+// ESP32BLEService — BLE implementation for FlashLink OS protocol.
 // Uses react-native-ble-plx. Platform-guarded (no-op on web).
 //
 // Auth flow:

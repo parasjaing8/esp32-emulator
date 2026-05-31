@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "ESP32 Emulator",
-    "slug": "esp32-emulator",
+    "name": "FlashLink",
+    "slug": "flashlink",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "esp32emu",
+    "scheme": "flashlink",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "android": {
@@ -12,7 +12,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
-      "package": "com.parasjain.esp32emulator",
+      "package": "com.parasjain.flashlink",
       "permissions": [
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
@@ -30,7 +30,7 @@
         {
           "isBackgroundEnabled": false,
           "modes": ["peripheral", "central"],
-          "bluetoothAlwaysPermission": "Allow ESP32 Emulator to use Bluetooth to connect to your ESP32 board"
+          "bluetoothAlwaysPermission": "Allow FlashLink to use Bluetooth to connect to your ESP32 board"
         }
       ]
     ],

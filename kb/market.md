@@ -1,4 +1,4 @@
-# ESP32 Emulator — Market Research & Positioning
+# FlashLink — Market Research & Positioning
 _Last updated: 2026-05-31_
 
 ## Competitive Landscape
@@ -13,7 +13,7 @@ _Last updated: 2026-05-31_
 | Esp-Mobile-Apps (JoaoLopesF) | Partial (firmware side) | Yes | No | No | Yes |
 | SparkFun BLE OTA | No | No | Yes (browser only) | No | Yes |
 | ESP BLE Provisioning (Espressif) | No | No | No | No | Yes |
-| **ESP32 Emulator (ours)** | **Yes — any pin** | **Yes** | **Yes — local .bin** | **Yes** | **Yes** |
+| **FlashLink (ours)** | **Yes — any pin** | **Yes** | **Yes — local .bin** | **Yes** | **Yes** |
 
 ## Key Finding
 **No existing app combines all four features (GPIO + serial + OTA + partition switch) in a single offline Android/iOS app.**
@@ -36,8 +36,8 @@ The **"OS firmware + dual-partition + project firmware switcher"** model (like W
 > "The only app that turns any ESP32 into a smart development board — control every pin, open a serial terminal, flash firmware, and switch projects, all over Bluetooth with no cloud, no account, no USB cable."
 
 ### The "Windows analogy" as a pitch
-- **Without ESP32 Emulator:** You need a USB cable + laptop to flash firmware, change projects, or debug pins.
-- **With ESP32 Emulator:** Your phone IS the laptop. Flash WaterTank firmware in the field. Switch back to OS mode for debugging. Toggle GPIO from the couch.
+- **Without FlashLink:** You need a USB cable + laptop to flash firmware, change projects, or debug pins.
+- **With FlashLink:** Your phone IS the laptop. Flash WaterTank firmware in the field. Switch back to OS mode for debugging. Toggle GPIO from the couch.
 
 ## Target Segments
 
@@ -67,15 +67,15 @@ The **"OS firmware + dual-partition + project firmware switcher"** model (like W
 - Open source the app (MIT)
 - Post on r/esp32, r/arduino, Hackaday, Arduino Forum
 - Create an "OS firmware" Arduino library users can include in their sketches
-- The library = 1-line include → board becomes ESP32 Emulator compatible
+- The library = 1-line include → board becomes FlashLink compatible
 
 ### Phase 3 — Ecosystem Play
-- "ESP32 Emulator Compatible" badge for open source firmware projects
+- "FlashLink Compatible" badge for open source firmware projects
 - Firmware repository / catalog in-app (like an app store for ESP32)
 - Eventually iOS
 
 ## Naming Note
-"ESP32 Emulator" is technically a misnomer (it doesn't emulate — it controls).
+"FlashLink" is technically a misnomer (it doesn't emulate — it controls).
 Better names to consider: **ESP32 Commander**, **BLE Toolbox**, **ESP Deck**, **BoardLink**
 The current name is fine for development but reconsider before Play Store launch.
 

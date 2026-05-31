@@ -1,4 +1,4 @@
-# ESP32 Emulator — Atomic Task List
+# FlashLink — Atomic Task List
 
 > For local LLM / DeepSeek execution. Work top-to-bottom. Mark each task DONE before moving to next.
 > Always read a file before editing it. Never skip a task.
@@ -11,8 +11,8 @@
 - [x] **P0-1** Delete `models/Event.ts`
 - [x] **P0-2** Delete `storage/database.ts`
 - [x] **P0-3** Delete `services/IDeviceService.ts`
-- [x] **P0-4** In `services/AuthService.ts`: replace `@watertank_auth` → `@esp32emu_auth` and `@watertank_preferred_device` → `@esp32emu_preferred_device`
-- [x] **P0-5** In `services/CrashReportService.ts`: replace storage key `@watertank_diag` → `@esp32emu_diag` and fix "WaterTank" strings
+- [x] **P0-4** In `services/AuthService.ts`: replace `@watertank_auth` → `@flashlink_auth` and `@watertank_preferred_device` → `@flashlink_preferred_device`
+- [x] **P0-5** In `services/CrashReportService.ts`: replace storage key `@watertank_diag` → `@flashlink_diag` and fix "WaterTank" strings
 - [x] **P0-6** In `constants/ble.ts`: add `BLE_OTA_SERVICE_UUID`, `BLE_OTA_CHAR_RECV_FW`, `BLE_OTA_CHAR_COMMAND`, `BLE_RECONNECT_DELAYS`, `BLE_SCAN_TIMEOUT`, `BLE_MTU_SIZE`
 - [x] **P0-7** Fix broken imports (NotificationService.ts deleted — was unused)
 - [x] **P0-8** TypeScript typecheck — zero errors ✓
@@ -116,10 +116,10 @@
 - [x] **P5-2** `npm install` ✓
 - [x] **P5-3** `expo prebuild --platform android` — `android/` generated ✓
 - [x] **P5-4** `cd android && ./gradlew clean && ./gradlew assembleRelease` ✓
-- [ ] **P5-5** Generate release keystore: `keytool -genkey -v -keystore esp32-emulator-release.keystore -alias esp32emu -keyalg RSA -keysize 2048 -validity 10000`
+- [ ] **P5-5** Generate release keystore: `keytool -genkey -v -keystore flashlink-release.keystore -alias flashlink -keyalg RSA -keysize 2048 -validity 10000`
 - [ ] **P5-6** Add `signingConfigs` to `android/app/build.gradle`
 - [x] **P5-7** APK at `release/esp32OSv1.apk` (82MB, debug-signed) ✓
-- [x] **P5-7b** GitHub release: https://github.com/parasjaing8/esp32-emulator/releases/tag/v1.0.0 ✓
+- [x] **P5-7b** GitHub release: https://github.com/parasjaing8/flashlink/releases/tag/v1.0.0 ✓
 - [ ] **P5-8** Flash ESP32 OS firmware to ESP32-C3 (already done — reconnect USB if needed)
 - [ ] **P5-9** Install APK on Android phone: `adb install -r release/esp32OSv1.apk`
 - [ ] **P5-10** Hardware test: scan + connect, verify board info shows ESP32-C3 + real MAC

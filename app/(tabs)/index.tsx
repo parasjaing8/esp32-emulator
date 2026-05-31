@@ -52,7 +52,7 @@ export default function BoardScreen() {
     <SafeAreaView style={S.root} edges={['top']}>
       <View style={S.header}>
         <View>
-          <Text style={S.title}>ESP32 Emulator</Text>
+          <Text style={S.title}>FlashLink</Text>
           {connected && boardInfo && <Text style={S.subtitle}>{boardInfo.chip} · {boardInfo.mac}</Text>}
 
         </View>

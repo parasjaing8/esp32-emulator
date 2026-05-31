@@ -1,4 +1,4 @@
-// ESP32 Emulator OS Firmware v1.0.0
+// FlashLink OS Firmware v1.0.0
 // Partition A — always preserved, never OTA-overwritten.
 // Exposes: board info, GPIO control, ADC, BLE serial, OTA (partition B), auth.
 //
