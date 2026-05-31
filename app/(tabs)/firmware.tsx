@@ -38,7 +38,7 @@ export default function FirmwareScreen() {
 
   async function pickFile() {
     const result = await DocumentPicker.getDocumentAsync({
-      type: '*/*',
+      type: 'application/octet-stream',
       copyToCacheDirectory: true,
     });
     if (result.canceled) return;
@@ -64,8 +64,12 @@ export default function FirmwareScreen() {
             setStartTime(Date.now());
             setElapsed(0);
             setFlashDone(false);
-            await flashFirmware(selected.uri, selected.name, Math.round(selected.size / 1024));
-            setFlashDone(true);
+            try {
+              await flashFirmware(selected.uri, selected.name, Math.round(selected.size / 1024));
+              setFlashDone(true);
+            } catch (err) {
+              Alert.alert('Flash Failed', err instanceof Error ? err.message : 'OTA transfer failed. Try again.');
+            }
           },
         },
       ]
