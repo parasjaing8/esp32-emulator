@@ -235,19 +235,12 @@ export class ESP32BLEService {
     if (!this.device) return;
     const deviceId = this.device.id;
 
-    // Read and store fresh session token
+    // Read and store fresh session token with placeholder name —
+    // _runConnectionSetup reads CHAR_BOARD_INFO and will update to a real name.
     const sessChar = await this.device.readCharacteristicForService(OS_SERVICE_UUID, CHAR_SESSION);
     if (sessChar?.value) {
       const token = Buffer.from(sessChar.value, 'base64');
-      const deviceNameChar = await this.device.readCharacteristicForService(OS_SERVICE_UUID, CHAR_BOARD_INFO).catch(() => null);
-      let name = 'ESP32-OS';
-      if (deviceNameChar?.value) {
-        try {
-          const info = JSON.parse(Buffer.from(deviceNameChar.value, 'base64').toString('utf8'));
-          name = info.chip ?? 'ESP32-OS';
-        } catch { /* ignore */ }
-      }
-      await AuthService.storeSession(deviceId, token, name);
+      await AuthService.storeSession(deviceId, token, 'FlashLink Device');
       await AuthService.setPreferredDevice(deviceId);
     }
 
@@ -273,6 +266,12 @@ export class ESP32BLEService {
         const boardInfo = this._parseBoardInfo(raw);
         this.cbs?.onBoardInfo(boardInfo);
         logBleInfo('board info', { chip: raw.chip, mac: raw.mac });
+        // Update session name from placeholder set in _onAuthSuccess
+        const storedSession = await AuthService.getSession(this.device!.id);
+        if (storedSession?.deviceName === 'FlashLink Device') {
+          const better = `${raw.chip ?? 'ESP32'} ${String(raw.mac ?? '').slice(-5)}`;
+          await AuthService.storeSession(this.device!.id, Buffer.from(storedSession.token, 'hex'), better);
+        }
       } catch (err) {
         logBleError('board info parse error', { err: String(err) });
       }
