@@ -16,7 +16,7 @@ The dual-partition "OS + app firmware" model has no public precedent.
 ## UVP
 > "Control every pin, open a serial terminal, flash firmware, switch projects — all over Bluetooth. No cloud. No USB cable. No account."
 
-## What's done (as of 2026-05-31)
+## What's done (as of 2026-06-01)
 - [x] Full UI — Board, GPIO, Terminal, Firmware (simulation mode working)
 - [x] Phase 0: WaterTank cleanup — deleted Event.ts, database.ts, IDeviceService.ts, NotificationService.ts
 - [x] Phase 0: AuthService/CrashReportService storage keys renamed @flashlink_*
@@ -36,7 +36,11 @@ The dual-partition "OS + app firmware" model has no public precedent.
 - [x] fix: blank Board screen when connected but boardInfo null (DeviceSetupModal wired, loading spinner, completeSetup calls _runConnectionSetup)
 - [x] kb/plan1.md + kb/task1.md created
 - [x] Audit 1 (15 findings) — all 10 actionable tasks fixed on branch m4 (2026-06-01)
-- [x] UX audit + 3 design variant branches — in progress
+- [x] UX audit + 3 design variant branches (ux-v1/v2/v3) created (2026-06-01)
+- [x] Protocol unit tests: 53 tests, all passing — `node tests/protocol.test.js` (2026-06-01)
+- [x] Firmware audit 1: 7 findings, 6 fixes applied to firmware on m4 (2026-06-01)
+- [x] README.md written — features, BLE protocol table, build + flash instructions
+- [x] kb/lessons.md — key lessons from all phases captured
 
 ## What's next (priority order)
 

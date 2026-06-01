@@ -1,5 +1,29 @@
 # FlashLink — Session Logs
 
+## 2026-06-01 — Session 2: firmware audit, protocol tests, README, lessons
+
+### What happened
+Free-rein session — no hardware connected. Tests, firmware audit, docs, memory.
+
+### Work done
+- **Protocol tests** — `tests/protocol.test.js`: 53 pure Node.js tests, all passing. Covers CRC16-CCITT-ZERO (known vector 0x31C3), semver, OTA start command, sector packet building + full 4096-byte sector integrity. Jest config added (`jest.config.js`). Runs without `npm install`: `node tests/protocol.test.js`.
+- **Firmware audit 1** — full read of `firmware/esp32-os/esp32-os.ino` (680 lines), 7 findings documented in `kb/audit_firmware1.md`. All actionable fixes applied:
+  - FW-T001/T002: extracted `buildGpioStateJson()`; added `gpioConfigured[]` array — GpioStateCB.onRead no longer sends spurious NOTIFY; notify/poll skip unconfigured + flash pins
+  - FW-T003: removed dead `isForbiddenOutput` double-check in GpioConfigCB
+  - FW-T004: PartitionCB.onRead uses `esp_partition_find_first(OTA_1)` explicitly
+  - FW-T005: BoardInfoCB StaticJsonDocument + buf bumped 256→384 bytes
+  - FW-T007: serial bridge chunk size 509→244 (BLE 4.x safe minimum)
+  - FW-T006 (verify `bleOta.startAbortTimer` unit) deferred — NimBLEOta.h not in repo
+- **README.md** — full project README created (features, architecture, BLE protocol table, auth protocol, build instructions, project structure)
+- **kb/lessons.md** — all key lessons from the project captured (firmware, BLE, RN, testing, build)
+- **kb/tasks_firmware1.md** — task list with completion status
+
+### Commits on m4
+3 commits:
+- `test: add protocol unit test suite (53 tests, all passing)`
+- `fix(firmware): apply audit1 findings — GPIO notify, partition, serial MTU`
+- (README + lessons — pending commit)
+
 ## 2026-06-01 — Audit 1 fixes (branch m4, all 10 tasks)
 
 ### What happened
