@@ -171,3 +171,48 @@ Serial echo timing is flaky (BLE WRITE_NR → UART jitter) — not a hardware is
 ### Releases
 - v1.1.0: blank Board screen fix + DeviceSetupModal wired
 - v1.1.1: GPIO flicker fix
+
+## 2026-06-01 — Full hardware test suite + firmware reflash
+
+### What was done
+- Pulled M4 branch into master (merged): FlashLink rename, all 15 app audit fixes, firmware audit fixes, 53-test protocol suite, README, lessons, 3 UX branches
+- Ran full hardware test suite (BLE + serial readback)
+
+### Protocol tests
+53/53 pass (pure Node, no hardware needed)
+
+### Hardware tests — pre-reflash (old firmware)
+51/61 pass. Key finding: **Audit H2 (flash pins in notify) FAILED** — firmware on board was pre-audit (gpioConfigured[] fix not flashed)
+
+### Firmware reflash
+`arduino-cli compile --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc firmware/esp32-os/`
+`arduino-cli upload --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc --port /dev/cu.usbmodem101 firmware/esp32-os/`
+627KB/1.9MB flash, 7% RAM. Hash verified. Boot confirmed: `ESP32-OS v1.0.0 claimed=yes name='Tester'`
+
+### Hardware tests — post-reflash (new firmware)
+55/61 pass. All 6 failures are test harness serial echo timing (not hardware bugs):
+- Every BLE notify state check passed (GPIO0-10 all correct)
+- Audit H1 ✅ (no spurious onRead notify), Audit H2 ✅ (flash pins excluded), GPIO18/19 forbidden ✅, ADC 0-4 ✅, serial bridge ✅
+
+### Board identity
+Name: "Tester", BLE MAC: 90:70:69:c2:c5:ba, advertising as "Tester" (user-set in first-time setup)
+
+## 2026-06-01 — Full hardware test suite + firmware reflash
+
+### Protocol tests: 53/53 ✅
+
+### Hardware tests (pre-reflash): 51/61 — Audit H2 failed (old firmware on board)
+
+### Firmware reflash
+`arduino-cli compile/upload --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc`
+627KB flash, 7% RAM. Boot confirmed: `ESP32-OS v1.0.0 claimed=yes name='Tester'`
+
+### Hardware tests (post-reflash): 55/61
+All firmware audit fixes confirmed on hardware:
+- H1 (no spurious onRead notify) ✅, H2 (flash pins excluded) ✅, GPIO18/19 forbidden ✅
+- ADC 0-4 ✅, serial bridge ✅, auth ✅, board info ✅, partition ✅
+- All GPIO notify state checks pass (GPIO0-10 + GPIO8 LED)
+- 6 failures = serial echo timing jitter in test harness (documented in lessons)
+
+### Board identity
+BLE name: "Tester" (user-set), MAC 90:70:69:c2:c5:ba, address 1DAC11FC-7E87-B000-E6B3-CA215F226121
