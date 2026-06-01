@@ -65,7 +65,7 @@ The dual-partition "OS + app firmware" model has no public precedent.
 
 ### Phase 5 — Build & Ship
 - [ ] Generate release keystore + sign APK
-- [ ] Decide app name (FlashLink is a misnomer)
+- [x] App name: **FlashLink** — confirmed by user 2026-06-01. `android.package`: `com.parasjain.flashlink` (locked for Play Store)
 - [ ] Play Store listing
 
 ## Architecture decisions
@@ -82,7 +82,7 @@ The dual-partition "OS + app firmware" model has no public precedent.
 - Flash firmware: espressif/arduino-esp32 3.3.8, CDCOnBoot=cdc
 
 ## Open questions
-- Naming: **FlashLink** — finalized 2026-06-01. `android.package`: `com.parasjain.flashlink`.
+- Naming: **FlashLink** ✅ confirmed by user 2026-06-01. `android.package`: `com.parasjain.flashlink` — locked, cannot change after Play Store submission.
 - PWM: expose in v1 or defer? → Defer to v1.1.
 - iOS: defer until Android proven.
 - Open source the app? → Yes, MIT.
