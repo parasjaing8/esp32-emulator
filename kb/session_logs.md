@@ -216,3 +216,17 @@ All firmware audit fixes confirmed on hardware:
 
 ### Board identity
 BLE name: "Tester" (user-set), MAC 90:70:69:c2:c5:ba, address 1DAC11FC-7E87-B000-E6B3-CA215F226121
+
+## 2026-06-02 — Package rename, scan fix, UX previews rebuilt
+
+### Changes
+- Package renamed `com.parasjain.flashlink` → `com.aihomecloud.flashlink` (user confirmed)
+- FlashLink app name confirmed by user (was autonomous M4 decision, now explicit)
+- BLE scan fixed: `startDeviceScan([OS_SERVICE_UUID])` instead of name prefix filter — boards renamed after claiming (e.g. "Tester") now appear in scan results
+- UX preview branches (ux-v1/v2/v3): package rename cherry-picked + all 3 rebuilt + re-released
+- Releases: v1.2.1 (package rename), v1.2.2 (BLE scan fix)
+
+### Lessons
+- Always scan by service UUID not name — user-set board names break name-prefix filter
+- `expo prebuild --platform android --no-install` is the only place to change package name
+- Cherry-pick package changes to all active branches before rebuilding preview APKs

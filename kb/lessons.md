@@ -82,3 +82,33 @@ adb install -r android/app/build/outputs/apk/release/app-release.apk
 Play Store submission waits until hardware testing is fully complete. APK size is ~82MB (includes Hermes engine + native BLE libs).
 
 **Never use `eas build`.** Always `expo prebuild` + `./gradlew assembleRelease`. EAS builds remotely, obscures the native layer, and charges build minutes. Local builds are reproducible and fast (~2min on M1).
+
+---
+
+## BLE App — Scan & Discovery
+
+**Scan by service UUID, never by name prefix.**
+After a user claims a board and sets a custom name (e.g. "Tester"), `name.startsWith('ESP32-OS')` silently drops it from results. The correct filter is the FlashLink service UUID (`OS_SERVICE_UUID`). react-native-ble-plx supports passing `[serviceUUID]` as the first arg to `startDeviceScan()`.
+
+**Board name after claiming is user-defined — never assume it.**
+`OS_DEVICE_NAME_PREFIX = 'ESP32-OS'` is only valid before first-time setup. After claiming, the board advertises with whatever name the user entered. Store/match by service UUID or device ID, not name.
+
+---
+
+## Build & Release — Package Name
+
+**`android.package` in `app.json` is the single source of truth.**
+`expo prebuild --platform android --no-install` regenerates `build.gradle` (applicationId + namespace), source dirs (`com/aihomecloud/flashlink/`), and Kotlin package declarations from `app.json`. Never edit these files manually.
+
+**APKs with different package IDs are different apps on Android — cannot upgrade over each other.**
+When renaming the package, all existing releases become incompatible. Old APK must be uninstalled before installing the new one. UX preview branches must have the package rename cherry-picked before rebuilding.
+
+**UX preview branches need package changes cherry-picked.**
+`git cherry-pick <commit>` the `app.json` change into each preview branch, then rebuild and re-release. Forgetting this means preview APKs install as separate apps alongside the main build.
+
+---
+
+## Testing
+
+**BLE test scripts: match board by service UUID or known MAC, not by name.**
+`BleakScanner.discover()` with `service_uuids=[SVC]` may not always work (board may not include service UUID in advertising packets on all Android stacks). Fallback: match by known address (`1DAC11FC-7E87-B000-E6B3-CA215F226121`) or name ("Tester"). Always include both paths.

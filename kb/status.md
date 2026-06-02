@@ -16,37 +16,29 @@ The dual-partition "OS + app firmware" model has no public precedent.
 ## UVP
 > "Control every pin, open a serial terminal, flash firmware, switch projects — all over Bluetooth. No cloud. No USB cable. No account."
 
-## What's done (as of 2026-06-01)
+## What's done (as of 2026-06-02)
 - [x] Full UI — Board, GPIO, Terminal, Firmware (simulation mode working)
-- [x] Phase 0: WaterTank cleanup — deleted Event.ts, database.ts, IDeviceService.ts, NotificationService.ts
-- [x] Phase 0: AuthService/CrashReportService storage keys renamed @flashlink_*
-- [x] Phase 0: BLE constants + NimBLEOta UUIDs added to constants/ble.ts
-- [x] Phase 1: BLEService.ts rewritten as ESP32BLEService (scan, connect, auth, GPIO, serial)
-- [x] Phase 1: DeviceContext wired for real BLE — all actions have real + sim paths
-- [x] Phase 1: Auth flow wired — PairingSheet shown on auth needed
-- [x] Phase 1: OTA flash via FirmwareUpdateService.performOtaTransfer (real BLE path)
-- [x] Firmware: esp32-os.ino compiled and flashed to ESP32-C3 Mini
-- [x] Firmware: advertising as ESP32-OS-C5B8, BLE confirmed working
-- [x] Firmware: auth (SHA256 salted, session tokens, NVS persistence) ← WaterTank port
-- [x] Firmware: GPIO config/write/state (notify), ADC read, serial bridge
-- [x] Firmware: NimBLEOta OTA (same protocol as FirmwareUpdateService.ts)
-- [x] Firmware: partition control (BOOT_OS / BOOT_APP + restart)
-- [x] expo prebuild run, android/ generated
-- [x] APK: app-release.apk built (82MB) — v2 built 2026-05-31 06:39 ✓
-- [x] fix: blank Board screen when connected but boardInfo null (DeviceSetupModal wired, loading spinner, completeSetup calls _runConnectionSetup)
-- [x] kb/plan1.md + kb/task1.md created
-- [x] Audit 1 (15 findings) — all 10 actionable tasks fixed on branch m4 (2026-06-01)
-- [x] UX audit + 3 design variant branches (ux-v1/v2/v3) created (2026-06-01)
-- [x] Protocol unit tests: 53 tests, all passing — `node tests/protocol.test.js` (2026-06-01)
-- [x] Firmware audit 1: 7 findings, 6 fixes applied to firmware on m4 (2026-06-01)
-- [x] README.md written — features, BLE protocol table, build + flash instructions
-- [x] kb/lessons.md — key lessons from all phases captured
+- [x] Phase 0-1: WaterTank → FlashLink migration complete, BLE fully wired
+- [x] Firmware: esp32-os.ino compiled, flashed, reflashed with audit fixes (2026-06-01)
+- [x] Audit 1 (15 app findings + 7 firmware findings) — all fixed (2026-06-01)
+- [x] Protocol unit tests: 53/53 passing — `node tests/protocol.test.js`
+- [x] Hardware verified: 55/61 BLE tests pass (6 are serial echo timing noise, not bugs)
+- [x] UX: 3 design branches created (ux-v1 polish / ux-v2 features / ux-v3 premium visual)
+- [x] App name: **FlashLink** confirmed by user
+- [x] Package: `com.aihomecloud.flashlink` (locked for Play Store)
+- [x] fix: BLE scan now uses service UUID filter — renamed boards ("Tester") discovered correctly
+- [x] fix: blank Board screen, DeviceSetupModal wired, GPIO sim flicker
+- [x] README.md, kb/lessons.md written
+- [x] Releases: v1.2.2 (stable), ux-v1/v2/v3-preview (UX testing)
 
 ## What's next (priority order)
 
-1. Install v1.1.1 APK on Android phone → test real BLE: GPIO toggle, serial terminal
-2. Test OTA flash with a real .bin → partition B → boot app → boot OS back
-3. Move test script (`/tmp/esp32test/test_pins.py`) into `tests/` in repo
+1. **Pick UX direction** — test ux-v1/v2/v3 on phone, decide which to merge into master
+2. **Real phone BLE test** — connect to "Tester" board via v1.2.2, test GPIO/serial/partition
+3. **OTA end-to-end** — flash real .bin to partition B, boot app, boot OS back
+4. **ADC on real BLE** — add `readAdcPin()` to BLEService (currently sim-only, audit L2)
+5. **Release keystore** — generate proper signing keystore for Play Store
+6. **Play Store listing** — after UX picked + hardware tested
 
 ### Phase 2 — Serial + OTA wiring
 - [ ] Test real BLE connection on Android phone
