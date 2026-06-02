@@ -101,7 +101,8 @@ export class ESP32BLEService {
         resolve([...found.values()]);
       }, timeoutMs);
 
-      manager.startDeviceScan(null, { allowDuplicates: false }, (err: unknown, dev: unknown) => {
+      // Filter by service UUID so renamed boards ("Tester", etc.) are still discovered
+      manager.startDeviceScan([OS_SERVICE_UUID], { allowDuplicates: false }, (err: unknown, dev: unknown) => {
         if (err) {
           clearTimeout(timer);
           manager.stopDeviceScan();
@@ -110,10 +111,8 @@ export class ESP32BLEService {
           return;
         }
         const d = dev as { id: string; name?: string | null; localName?: string | null; rssi?: number | null };
-        const name = d.localName ?? d.name ?? '';
-        if (name.startsWith(OS_DEVICE_NAME_PREFIX)) {
-          found.set(d.id, { id: d.id, name, rssi: d.rssi ?? -99 });
-        }
+        const name = d.localName ?? d.name ?? 'ESP32 Device';
+        found.set(d.id, { id: d.id, name, rssi: d.rssi ?? -99 });
       });
     });
   }
